@@ -3,7 +3,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listDocuments } from "@/lib/storage";
-import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/lib/auth";
 import { checkOllama } from "@/lib/ollama";
 import { Link } from "react-router-dom";
 
@@ -13,7 +13,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     document.title = "Dashboard — MinerDocs";
-    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+    setUserId(getCurrentUserId());
     checkOllama().then(setOllamaOk);
   }, []);
 
@@ -29,7 +29,7 @@ const Dashboard = () => {
               <h1 className="text-2xl font-semibold">Documentos</h1>
               <p className="text-muted-foreground">Gere, edite e exporte documentos técnicos.</p>
             </div>
-            <div className={`text-sm ${ollamaOk ? "text-green-600" : "text-red-600"}`}>
+            <div className="text-sm text-muted-foreground">
               Ollama: {ollamaOk ? "Conectado" : "Indisponível"}
             </div>
           </div>

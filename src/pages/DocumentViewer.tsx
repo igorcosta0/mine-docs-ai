@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDocument, upsertDocument } from "@/lib/storage";
 import { exportToDocx, exportToPDF } from "@/lib/exporters";
-import { supabase } from "@/integrations/supabase/client";
+
 
 const DocumentViewer = () => {
   const { id } = useParams();
@@ -29,26 +29,6 @@ const DocumentViewer = () => {
     const updated = { ...doc, titulo: title, conteudo: text, updatedAt: now };
     upsertDocument(updated);
 
-    // Tenta salvar no Supabase (tabela 'documents' quando existir)
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const userId = session.session?.user.id;
-      if (userId) {
-        await supabase.from("documents").upsert({
-          id: updated.id,
-          user_id: userId,
-          type: updated.tipo,
-          title: updated.titulo,
-          content: updated.conteudo,
-          updated_at: now,
-          created_at: doc.createdAt,
-        });
-      }
-    } catch (e) {
-      // Silencia erro caso tabela não exista ainda
-      // eslint-disable-next-line no-console
-      console.warn("Supabase save skipped:", e);
-    }
   }
 
   return (

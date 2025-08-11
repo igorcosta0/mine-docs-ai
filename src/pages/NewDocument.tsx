@@ -10,7 +10,7 @@ import { DOC_TYPES, buildPrompt } from "@/config/documentTypes";
 import { generateWithOllama } from "@/lib/ollama";
 import { BaseFields, DocumentRecord, DocumentType } from "@/types";
 import { upsertDocument } from "@/lib/storage";
-import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/lib/auth";
 
 const NewDocument = () => {
   const { type } = useParams();
@@ -48,8 +48,7 @@ const NewDocument = () => {
 
     try {
       const response = await generateWithOllama(model, prompt);
-      const { data } = await supabase.auth.getSession();
-      const userId = data.session?.user.id ?? null;
+      const userId = getCurrentUserId();
       const now = new Date().toISOString();
       const doc: DocumentRecord = {
         id: crypto.randomUUID(),

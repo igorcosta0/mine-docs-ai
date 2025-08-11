@@ -1,16 +1,14 @@
 import { useEffect } from "react";
 import AuthCard from "@/components/auth/AuthCard";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { requireAuth } from "@/lib/auth";
 
 const Login = () => {
   const nav = useNavigate();
 
   useEffect(() => {
     document.title = "Entrar — MinerDocs";
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) nav("/app");
-    });
+    if (requireAuth()) nav("/app");
   }, [nav]);
 
   return (

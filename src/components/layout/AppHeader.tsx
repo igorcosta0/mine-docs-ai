@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
+import { signOut } from "@/lib/auth";
 const AppHeader = () => {
   const nav = useNavigate();
   return (
@@ -14,6 +14,9 @@ const AppHeader = () => {
           <Link to="/app" className="text-sm">Dashboard</Link>
           <Button asChild variant="hero" size="sm">
             <Link to="/new/especificacao">Novo Documento</Link>
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => { signOut(); nav("/login"); }}>
+            Sair
           </Button>
         </nav>
       </div>
