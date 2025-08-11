@@ -6,6 +6,7 @@ import { listDocuments } from "@/lib/storage";
 import { getCurrentUserId } from "@/lib/auth";
 import { checkOllama } from "@/lib/ollama";
 import { Link } from "react-router-dom";
+import OllamaAssistant from "@/components/ollama/OllamaAssistant";
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -33,6 +34,10 @@ const Dashboard = () => {
               Ollama: {ollamaOk ? "Conectado" : "Indisponível"}
             </div>
           </div>
+        </section>
+
+        <section className="mb-8">
+          <OllamaAssistant />
         </section>
 
         <section className="grid md:grid-cols-3 gap-4 mb-10">

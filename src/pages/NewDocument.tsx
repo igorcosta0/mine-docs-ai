@@ -11,6 +11,7 @@ import { generateWithOllama } from "@/lib/ollama";
 import { BaseFields, DocumentRecord, DocumentType } from "@/types";
 import { upsertDocument } from "@/lib/storage";
 import { getCurrentUserId } from "@/lib/auth";
+import OllamaAssistant from "@/components/ollama/OllamaAssistant";
 
 const NewDocument = () => {
   const { type } = useParams();
@@ -72,6 +73,9 @@ const NewDocument = () => {
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
       <main className="container mx-auto px-4 py-8">
+        <section className="mb-6">
+          <OllamaAssistant />
+        </section>
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
             <CardTitle>Novo — {def.label}</CardTitle>
