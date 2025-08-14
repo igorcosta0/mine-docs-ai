@@ -9,6 +9,15 @@ export type LakeItem = {
   file_path: string;
   title: string;
   doc_type: string | null;
+  equipment_model: string | null;
+  manufacturer: string | null;
+  year: number | null;
+  norm_source: string | null;
+  description: string | null;
+  serial_number: string | null;
+  plant_unit: string | null;
+  system_area: string | null;
+  revision_version: string | null;
 };
 
 export async function getSupabaseUser() {
@@ -23,15 +32,30 @@ export async function listLakeItems(): Promise<{ items: LakeItem[]; error?: stri
   }
   const { data, error } = await supabase
     .from("lake_items")
-    .select("id,user_id,created_at,updated_at,tags,file_path,title,doc_type")
+    .select("*")
     .order("updated_at", { ascending: false });
   if (error) return { items: [], error: error.message };
   return { items: (data as LakeItem[]) ?? [] };
 }
 
+export type UploadLakeFileOptions = {
+  title: string;
+  tags?: string[];
+  docType?: string | null;
+  equipmentModel?: string;
+  manufacturer?: string;
+  year?: number;
+  normSource?: string;
+  description?: string;
+  serialNumber?: string;
+  plantUnit?: string;
+  systemArea?: string;
+  revisionVersion?: string;
+};
+
 export async function uploadLakeFile(
   file: File,
-  opts: { title: string; tags?: string[]; docType?: string | null }
+  opts: UploadLakeFileOptions
 ): Promise<{ ok: boolean; error?: string }> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
@@ -53,6 +77,15 @@ export async function uploadLakeFile(
     title: opts.title || file.name,
     tags: opts.tags ?? [],
     doc_type: opts.docType ?? null,
+    equipment_model: opts.equipmentModel ?? null,
+    manufacturer: opts.manufacturer ?? null,
+    year: opts.year ?? null,
+    norm_source: opts.normSource ?? null,
+    description: opts.description ?? null,
+    serial_number: opts.serialNumber ?? null,
+    plant_unit: opts.plantUnit ?? null,
+    system_area: opts.systemArea ?? null,
+    revision_version: opts.revisionVersion ?? null,
   });
   if (insErr) return { ok: false, error: insErr.message };
   return { ok: true };
