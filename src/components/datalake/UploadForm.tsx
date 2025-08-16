@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { uploadLakeFile, type UploadLakeFileOptions } from "@/lib/datalake";
-import { Upload } from "lucide-react";
+import { processDocumentAutomatically } from "@/lib/pdfProcessor";
+import { Upload, Brain, FileText } from "lucide-react";
 
 interface UploadFormProps {
   onSuccess: () => void;
@@ -16,7 +18,9 @@ interface UploadFormProps {
 const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [autoMode, setAutoMode] = useState(true);
   
   // Campos básicos
   const [title, setTitle] = useState("");
@@ -48,6 +52,56 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     setPlantUnit("");
     setSystemArea("");
     setRevisionVersion("");
+  };
+
+  const handleAutoProcess = async (file: File) => {
+    setProcessing(true);
+    
+    try {
+      toast({
+        title: "Processando documento",
+        description: "Analisando PDF com IA para extrair metadados...",
+      });
+
+      const metadata = await processDocumentAutomatically(file);
+      
+      // Preencher campos automaticamente
+      setTitle(metadata.title);
+      setDocType(metadata.docType);
+      setDescription(metadata.description || '');
+      setEquipmentModel(metadata.equipmentModel || '');
+      setManufacturer(metadata.manufacturer || '');
+      setYear(metadata.year ? String(metadata.year) : '');
+      setNormSource(metadata.normSource || '');
+      setSerialNumber(metadata.serialNumber || '');
+      setPlantUnit(metadata.plantUnit || '');
+      setSystemArea(metadata.systemArea || '');
+      setRevisionVersion(metadata.revisionVersion || '');
+      setTags(metadata.tags.join(', '));
+      
+      toast({
+        title: "Processamento concluído",
+        description: "Metadados extraídos automaticamente. Revise e confirme.",
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Erro no processamento",
+        description: "Falha ao processar documento. Preencha manualmente.",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null;
+    setFile(selectedFile);
+    
+    if (selectedFile && autoMode) {
+      await handleAutoProcess(selectedFile);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,9 +152,22 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Upload de PDF Técnico
+          {processing ? (
+            <Brain className="h-5 w-5 animate-pulse text-primary" />
+          ) : (
+            <Upload className="h-5 w-5" />
+          )}
+          Upload Inteligente de PDF
         </CardTitle>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Switch
+            checked={autoMode}
+            onCheckedChange={setAutoMode}
+            disabled={processing}
+          />
+          <FileText className="h-4 w-4" />
+          <span>Processamento automático com IA</span>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,8 +178,14 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
               id="file"
               type="file" 
               accept=".pdf"
-              onChange={(e) => setFile(e.target.files?.[0] || null)} 
+              onChange={handleFileChange}
+              disabled={processing}
             />
+            {processing && (
+              <p className="text-xs text-primary animate-pulse">
+                🧠 Processando documento com IA...
+              </p>
+            )}
           </div>
 
           {/* Informações básicas */}
@@ -249,10 +322,10 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
           <Button 
             type="submit" 
             variant="hero" 
-            disabled={!isValidUpload || loading}
+            disabled={!isValidUpload || loading || processing}
             className="w-full"
           >
-            {loading ? "Enviando..." : "Enviar PDF"}
+            {loading ? "Enviando..." : processing ? "Processando..." : "Enviar PDF"}
           </Button>
           
           {!canUpload && (
