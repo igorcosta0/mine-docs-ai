@@ -3,7 +3,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listDocuments } from "@/lib/storage";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { checkOllama } from "@/lib/ollama";
 import { Link } from "react-router-dom";
 import OllamaAssistant from "@/components/ollama/OllamaAssistant";
@@ -14,7 +14,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     document.title = "Dashboard — MinerDocs";
-    setUserId(getCurrentUserId());
+    getCurrentUser().then(user => setUserId(user?.id || null));
     checkOllama().then(setOllamaOk);
   }, []);
 

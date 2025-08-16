@@ -1,11 +1,15 @@
-export function getCurrentUserId(): string | null {
-  return localStorage.getItem("auth_user");
+import { supabase } from "@/integrations/supabase/client";
+
+export async function getCurrentUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
 }
 
-export function requireAuth(): boolean {
-  return !!getCurrentUserId();
+export async function requireAuth(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return !!user;
 }
 
-export function signOut() {
-  localStorage.removeItem("auth_user");
+export async function signOut() {
+  await supabase.auth.signOut();
 }

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const AuthCard = ({ onSuccess }: { onSuccess: () => void }) => {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -15,12 +16,37 @@ const AuthCard = ({ onSuccess }: { onSuccess: () => void }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Fallback de autenticação local (substituir por Supabase quando conectado)
       if (!email || !password) throw new Error("Informe e-mail e senha");
-      localStorage.setItem("auth_user", email);
-      onSuccess();
+      
+      const redirectUrl = `${window.location.origin}/app`;
+      
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl
+          }
+        });
+        if (error) throw error;
+        toast({ 
+          title: "Conta criada", 
+          description: "Verifique seu e-mail para confirmar a conta." 
+        });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        if (error) throw error;
+        onSuccess();
+      }
     } catch (err: any) {
-      toast({ title: "Autenticação falhou", description: err.message });
+      toast({ 
+        title: "Autenticação falhou", 
+        description: err.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

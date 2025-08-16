@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -16,7 +16,14 @@ import { requireAuth } from "@/lib/auth";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  if (!requireAuth()) return <Navigate to="/login" replace />;
+  const [isAuth, setIsAuth] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    requireAuth().then(setIsAuth);
+  }, []);
+  
+  if (isAuth === null) return <div>Carregando...</div>;
+  if (!isAuth) return <Navigate to="/login" replace />;
   return children;
 }
 

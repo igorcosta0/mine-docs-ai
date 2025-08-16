@@ -10,7 +10,7 @@ import { DOC_TYPES, buildPrompt } from "@/config/documentTypes";
 import { generateWithOllama } from "@/lib/ollama";
 import { BaseFields, DocumentRecord, DocumentType } from "@/types";
 import { upsertDocument } from "@/lib/storage";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import OllamaAssistant from "@/components/ollama/OllamaAssistant";
 
 const NewDocument = () => {
@@ -49,11 +49,11 @@ const NewDocument = () => {
 
     try {
       const response = await generateWithOllama(model, prompt);
-      const userId = getCurrentUserId();
+      const user = await getCurrentUser();
       const now = new Date().toISOString();
       const doc: DocumentRecord = {
         id: crypto.randomUUID(),
-        userId,
+        userId: user?.id || null,
         tipo: (type as DocumentType) ?? "especificacao",
         titulo: base.titulo,
         conteudo: response,
