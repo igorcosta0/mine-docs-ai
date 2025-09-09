@@ -14,6 +14,186 @@ export type Database = {
   }
   public: {
     Tables: {
+      documentos_especificacao: {
+        Row: {
+          acabamento: string | null
+          autor: string | null
+          conteudo: string
+          created_at: string
+          data: string | null
+          descricao: string | null
+          dimensoes: Json | null
+          ensaios: string | null
+          escopo: string | null
+          id: string
+          materiais: Json | null
+          normas: string | null
+          titulo: string
+          tolerancias: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acabamento?: string | null
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          dimensoes?: Json | null
+          ensaios?: string | null
+          escopo?: string | null
+          id?: string
+          materiais?: Json | null
+          normas?: string | null
+          titulo: string
+          tolerancias?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acabamento?: string | null
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          dimensoes?: Json | null
+          ensaios?: string | null
+          escopo?: string | null
+          id?: string
+          materiais?: Json | null
+          normas?: string | null
+          titulo?: string
+          tolerancias?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      documentos_folha_dados: {
+        Row: {
+          autor: string | null
+          capacidade: string | null
+          caracteristicas_tecnicas: Json | null
+          conteudo: string
+          created_at: string
+          data: string | null
+          descricao: string | null
+          equipamento: string | null
+          fabricante: string | null
+          id: string
+          modelo: string | null
+          normas: string | null
+          parametros_operacionais: Json | null
+          potencia: string | null
+          titulo: string
+          updated_at: string
+          user_id: string
+          voltagem: string | null
+        }
+        Insert: {
+          autor?: string | null
+          capacidade?: string | null
+          caracteristicas_tecnicas?: Json | null
+          conteudo: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          equipamento?: string | null
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          normas?: string | null
+          parametros_operacionais?: Json | null
+          potencia?: string | null
+          titulo: string
+          updated_at?: string
+          user_id: string
+          voltagem?: string | null
+        }
+        Update: {
+          autor?: string | null
+          capacidade?: string | null
+          caracteristicas_tecnicas?: Json | null
+          conteudo?: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          equipamento?: string | null
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          normas?: string | null
+          parametros_operacionais?: Json | null
+          potencia?: string | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          voltagem?: string | null
+        }
+        Relationships: []
+      }
+      documentos_memorial: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          cronograma: Json | null
+          data: string | null
+          descricao: string | null
+          id: string
+          localização: string | null
+          metodologia: string | null
+          normas: string | null
+          objetivo: string | null
+          projeto_referencia: string | null
+          recursos: Json | null
+          responsaveis: Json | null
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          autor?: string | null
+          conteudo: string
+          created_at?: string
+          cronograma?: Json | null
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          localização?: string | null
+          metodologia?: string | null
+          normas?: string | null
+          objetivo?: string | null
+          projeto_referencia?: string | null
+          recursos?: Json | null
+          responsaveis?: Json | null
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          autor?: string | null
+          conteudo?: string
+          created_at?: string
+          cronograma?: Json | null
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          localização?: string | null
+          metodologia?: string | null
+          normas?: string | null
+          objetivo?: string | null
+          projeto_referencia?: string | null
+          recursos?: Json | null
+          responsaveis?: Json | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lake_items: {
         Row: {
           created_at: string
