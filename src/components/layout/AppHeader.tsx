@@ -13,7 +13,6 @@ const AppHeader = () => {
         <nav className="flex items-center gap-2">
           <Link to="/app" className="text-sm">Dashboard</Link>
           <Link to="/datalake" className="text-sm">Data Lake</Link>
-          <Link to="/datalake-docs" className="text-sm">Docs Técnicos</Link>
           <Button asChild variant="hero" size="sm">
             <Link to="/new/especificacao">Novo Documento</Link>
           </Button>
