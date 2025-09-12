@@ -14,36 +14,330 @@ export type Database = {
   }
   public: {
     Tables: {
-      lake_items: {
+      documentos_especificacao: {
         Row: {
-          created_at: string
-          doc_type: string | null
-          file_path: string
+          checksum_sha256: string
+          classification: string | null
+          contractor: string | null
+          created_at: string | null
+          customer: string | null
+          disciplines: string[] | null
+          doc_number: string
+          doc_type: Database["public"]["Enums"]["doc_type_enum"]
+          extra: Json
+          figures_tables: string[] | null
           id: string
-          tags: string[] | null
+          issue_date: string | null
+          location: string | null
+          norms: string[] | null
+          project: string | null
+          rev: string
+          status: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path: string
           title: string
+          updated_at: string | null
+          uploader: string | null
+        }
+        Insert: {
+          checksum_sha256: string
+          classification?: string | null
+          contractor?: string | null
+          created_at?: string | null
+          customer?: string | null
+          disciplines?: string[] | null
+          doc_number: string
+          doc_type: Database["public"]["Enums"]["doc_type_enum"]
+          extra?: Json
+          figures_tables?: string[] | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          norms?: string[] | null
+          project?: string | null
+          rev: string
+          status?: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path: string
+          title: string
+          updated_at?: string | null
+          uploader?: string | null
+        }
+        Update: {
+          checksum_sha256?: string
+          classification?: string | null
+          contractor?: string | null
+          created_at?: string | null
+          customer?: string | null
+          disciplines?: string[] | null
+          doc_number?: string
+          doc_type?: Database["public"]["Enums"]["doc_type_enum"]
+          extra?: Json
+          figures_tables?: string[] | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          norms?: string[] | null
+          project?: string | null
+          rev?: string
+          status?: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path?: string
+          title?: string
+          updated_at?: string | null
+          uploader?: string | null
+        }
+        Relationships: []
+      }
+      documentos_folha_dados: {
+        Row: {
+          autor: string | null
+          capacidade: string | null
+          caracteristicas_tecnicas: Json | null
+          conteudo: string
+          created_at: string
+          data: string | null
+          descricao: string | null
+          equipamento: string | null
+          fabricante: string | null
+          id: string
+          modelo: string | null
+          normas: string | null
+          parametros_operacionais: Json | null
+          potencia: string | null
+          titulo: string
+          updated_at: string
+          user_id: string
+          voltagem: string | null
+        }
+        Insert: {
+          autor?: string | null
+          capacidade?: string | null
+          caracteristicas_tecnicas?: Json | null
+          conteudo: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          equipamento?: string | null
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          normas?: string | null
+          parametros_operacionais?: Json | null
+          potencia?: string | null
+          titulo: string
+          updated_at?: string
+          user_id: string
+          voltagem?: string | null
+        }
+        Update: {
+          autor?: string | null
+          capacidade?: string | null
+          caracteristicas_tecnicas?: Json | null
+          conteudo?: string
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          equipamento?: string | null
+          fabricante?: string | null
+          id?: string
+          modelo?: string | null
+          normas?: string | null
+          parametros_operacionais?: Json | null
+          potencia?: string | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+          voltagem?: string | null
+        }
+        Relationships: []
+      }
+      documentos_memorial: {
+        Row: {
+          autor: string | null
+          conteudo: string
+          created_at: string
+          cronograma: Json | null
+          data: string | null
+          descricao: string | null
+          id: string
+          localização: string | null
+          metodologia: string | null
+          normas: string | null
+          objetivo: string | null
+          projeto_referencia: string | null
+          recursos: Json | null
+          responsaveis: Json | null
+          titulo: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          autor?: string | null
+          conteudo: string
           created_at?: string
-          doc_type?: string | null
-          file_path: string
+          cronograma?: Json | null
+          data?: string | null
+          descricao?: string | null
           id?: string
-          tags?: string[] | null
-          title: string
+          localização?: string | null
+          metodologia?: string | null
+          normas?: string | null
+          objetivo?: string | null
+          projeto_referencia?: string | null
+          recursos?: Json | null
+          responsaveis?: Json | null
+          titulo: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          autor?: string | null
+          conteudo?: string
           created_at?: string
+          cronograma?: Json | null
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          localização?: string | null
+          metodologia?: string | null
+          normas?: string | null
+          objetivo?: string | null
+          projeto_referencia?: string | null
+          recursos?: Json | null
+          responsaveis?: Json | null
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          checksum_sha256: string
+          classification: string | null
+          contractor: string | null
+          created_at: string | null
+          customer: string | null
+          disciplines: string[] | null
+          doc_number: string
+          doc_type: Database["public"]["Enums"]["doc_type_enum"]
+          extra: Json
+          figures_tables: string[] | null
+          id: string
+          issue_date: string | null
+          location: string | null
+          norms: string[] | null
+          project: string | null
+          rev: string
+          status: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path: string
+          title: string
+          updated_at: string | null
+          uploader: string | null
+        }
+        Insert: {
+          checksum_sha256: string
+          classification?: string | null
+          contractor?: string | null
+          created_at?: string | null
+          customer?: string | null
+          disciplines?: string[] | null
+          doc_number: string
+          doc_type: Database["public"]["Enums"]["doc_type_enum"]
+          extra?: Json
+          figures_tables?: string[] | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          norms?: string[] | null
+          project?: string | null
+          rev: string
+          status?: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path: string
+          title: string
+          updated_at?: string | null
+          uploader?: string | null
+        }
+        Update: {
+          checksum_sha256?: string
+          classification?: string | null
+          contractor?: string | null
+          created_at?: string | null
+          customer?: string | null
+          disciplines?: string[] | null
+          doc_number?: string
+          doc_type?: Database["public"]["Enums"]["doc_type_enum"]
+          extra?: Json
+          figures_tables?: string[] | null
+          id?: string
+          issue_date?: string | null
+          location?: string | null
+          norms?: string[] | null
+          project?: string | null
+          rev?: string
+          status?: Database["public"]["Enums"]["doc_status_enum"]
+          storage_path?: string
+          title?: string
+          updated_at?: string | null
+          uploader?: string | null
+        }
+        Relationships: []
+      }
+      lake_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          doc_type: string | null
+          equipment_model: string | null
+          file_path: string
+          id: string
+          manufacturer: string | null
+          norm_source: string | null
+          plant_unit: string | null
+          revision_version: string | null
+          serial_number: string | null
+          system_area: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
           doc_type?: string | null
+          equipment_model?: string | null
+          file_path: string
+          id?: string
+          manufacturer?: string | null
+          norm_source?: string | null
+          plant_unit?: string | null
+          revision_version?: string | null
+          serial_number?: string | null
+          system_area?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          doc_type?: string | null
+          equipment_model?: string | null
           file_path?: string
           id?: string
+          manufacturer?: string | null
+          norm_source?: string | null
+          plant_unit?: string | null
+          revision_version?: string | null
+          serial_number?: string | null
+          system_area?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
           user_id?: string
+          year?: number | null
         }
         Relationships: []
       }
@@ -55,7 +349,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      doc_status_enum: "ingested" | "processing" | "error"
+      doc_type_enum: "especificacao_tecnica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -182,6 +477,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      doc_status_enum: ["ingested", "processing", "error"],
+      doc_type_enum: ["especificacao_tecnica"],
+    },
   },
 } as const
