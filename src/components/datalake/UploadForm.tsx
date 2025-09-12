@@ -19,16 +19,17 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [autoMode, setAutoMode] = useState(true);
+  const [processingProgress, setProcessingProgress] = useState("");
   
   // Apenas campos essenciais
   const [docType, setDocType] = useState("");
 
   const docTypes = [
-    { value: "especificacao", label: "Especificação Técnica" },
-    { value: "folha-dados", label: "Folha de Dados" },
-    { value: "memorial", label: "Memorial Descritivo" },
+    { value: "especificacao-tecnica", label: "Especificação Técnica (ET)" },
+    { value: "memoria-calculo", label: "Memória de Cálculo (MC)" },
+    { value: "memorial-descritivo", label: "Memorial Descritivo (MD)" },
     { value: "manual", label: "Manual" },
     { value: "desenho", label: "Desenho Técnico" },
     { value: "norma", label: "Norma/Procedimento" },
@@ -38,83 +39,112 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
   ];
 
   const resetForm = () => {
-    setFile(null);
+    setFiles([]);
     setDocType("");
+    setProcessingProgress("");
   };
 
-  const handleAutoProcess = async (file: File) => {
+  const handleAutoProcess = async (files: File[]) => {
     setProcessing(true);
     
     try {
-      toast({
-        title: "Processando documento",
-        description: "Analisando PDF com IA para classificar tipo...",
-      });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessingProgress(`Processando ${i + 1} de ${files.length}: ${file.name}`);
+        
+        const metadata = await processDocumentAutomatically(file);
+        
+        // Para múltiplos arquivos, usar o tipo detectado automaticamente
+        const options = {
+          title: metadata.title,
+          docType: metadata.docType,
+          equipmentModel: metadata.equipmentModel,
+          manufacturer: metadata.manufacturer,
+          year: metadata.year,
+          normSource: metadata.normSource,
+          description: metadata.description,
+          serialNumber: metadata.serialNumber,
+          plantUnit: metadata.plantUnit,
+          systemArea: metadata.systemArea,
+          revisionVersion: metadata.revisionVersion,
+          tags: metadata.tags,
+        };
 
-      const metadata = await processDocumentAutomatically(file);
-      
-      // Preencher apenas o tipo de documento
-      setDocType(metadata.docType);
+        await uploadLakeFile(file, options);
+      }
       
       toast({
-        title: "Processamento concluído",
-        description: `Documento classificado como: ${metadata.docType}`,
+        title: "Upload concluído",
+        description: `${files.length} arquivo(s) processado(s) e enviado(s) com sucesso.`,
       });
+      
+      resetForm();
+      onSuccess();
       
     } catch (error) {
       toast({
         title: "Erro no processamento",
-        description: "Falha ao processar documento. Selecione o tipo manualmente.",
+        description: "Falha ao processar alguns documentos.",
         variant: "destructive"
       });
     } finally {
       setProcessing(false);
+      setProcessingProgress("");
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] || null;
-    setFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files || []);
+    setFiles(selectedFiles);
     
-    if (selectedFile && autoMode) {
-      await handleAutoProcess(selectedFile);
+    if (selectedFiles.length > 0 && autoMode) {
+      await handleAutoProcess(selectedFiles);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (files.length === 0) return;
     
     setLoading(true);
     
-    const options: UploadLakeFileOptions = {
-      title: file.name.replace('.pdf', ''),
-      docType: docType || 'documento',
-      tags: docType ? [docType] : ['documento'],
-    };
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setProcessingProgress(`Enviando ${i + 1} de ${files.length}: ${file.name}`);
+        
+        const options: UploadLakeFileOptions = {
+          title: file.name.replace('.pdf', ''),
+          docType: docType || 'documento',
+          tags: docType ? [docType] : ['documento'],
+        };
 
-    const { ok, error } = await uploadLakeFile(file, options);
-    setLoading(false);
-    
-    if (!ok) {
+        const { ok, error } = await uploadLakeFile(file, options);
+        if (!ok) {
+          throw new Error(error);
+        }
+      }
+      
+      toast({ 
+        title: "Upload concluído", 
+        description: `${files.length} arquivo(s) enviado(s) com sucesso.` 
+      });
+      
+      resetForm();
+      onSuccess();
+    } catch (error: any) {
       toast({ 
         title: "Falha no upload", 
-        description: error, 
+        description: error.message, 
         variant: "destructive" 
       });
-      return;
+    } finally {
+      setLoading(false);
+      setProcessingProgress("");
     }
-    
-    toast({ 
-      title: "Arquivo enviado", 
-      description: "PDF adicionado ao Data Lake com sucesso." 
-    });
-    
-    resetForm();
-    onSuccess();
   };
 
-  const isValidUpload = canUpload && file;
+  const isValidUpload = canUpload && files.length > 0;
 
   return (
     <Card>
@@ -146,6 +176,7 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
               id="file"
               type="file" 
               accept=".pdf"
+              multiple
               onChange={handleFileChange}
               disabled={processing}
               className="cursor-pointer"
@@ -153,7 +184,7 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
             {processing && (
               <div className="flex items-center gap-2 text-sm text-primary animate-pulse">
                 <Brain className="h-4 w-4" />
-                <span>Analisando documento com IA...</span>
+                <span>{processingProgress || "Analisando documentos com IA..."}</span>
               </div>
             )}
           </div>
@@ -175,15 +206,24 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
             </Select>
           </div>
 
-          {/* Preview do arquivo selecionado */}
-          {file && (
-            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <FileText className="h-8 w-8 text-primary" />
-              <div className="flex-1">
-                <p className="font-medium text-sm">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                </p>
+          {/* Preview dos arquivos selecionados */}
+          {files.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Arquivos Selecionados ({files.length})
+              </Label>
+              <div className="max-h-32 overflow-y-auto space-y-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+                    <FileText className="h-6 w-6 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

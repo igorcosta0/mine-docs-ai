@@ -36,28 +36,39 @@ export async function analyzeDocumentWithAI(
   filename: string,
   extractedText: string
 ): Promise<ExtractedMetadata> {
-  const prompt = `Analise este documento PDF técnico industrial e extraia as seguintes informações em formato JSON:
+  const prompt = `Você é um especialista em classificação de documentos técnicos industriais. Analise este documento PDF e extraia as informações em formato JSON.
 
-Arquivo: ${filename}
-Conteúdo: ${extractedText}
+NOME DO ARQUIVO: ${filename}
+CONTEÚDO: ${extractedText}
 
-Extraia e retorne APENAS um JSON válido com:
+PRIORIDADE MÁXIMA - DETECÇÃO DE TIPO:
+1. Se o nome do arquivo contém "MD" = "memorial-descritivo"
+2. Se o nome do arquivo contém "MC" = "memoria-calculo"
+3. Se o nome do arquivo contém "ET" = "especificacao-tecnica"
+4. Se o conteúdo menciona "memorial descritivo" = "memorial-descritivo"
+5. Se o conteúdo menciona "memória de cálculo" = "memoria-calculo"
+6. Se o conteúdo menciona "especificação técnica" = "especificacao-tecnica"
+7. Se tem fórmulas/cálculos matemáticos = "memoria-calculo"
+8. Se tem especificações/parâmetros técnicos = "especificacao-tecnica"
+9. Se tem descrição de processo/método = "memorial-descritivo"
+
+Retorne APENAS este JSON:
 {
-  "title": "título do documento",
-  "docType": "tipo (especificacao, folha-dados, memorial, manual, desenho, etc)",
-  "equipmentModel": "modelo do equipamento se mencionado",
-  "manufacturer": "fabricante se mencionado", 
-  "year": ano se mencionado (número),
+  "title": "título limpo do documento",
+  "docType": "memorial-descritivo|memoria-calculo|especificacao-tecnica|manual|desenho|norma|certificado|relatorio|outros",
+  "equipmentModel": "modelo do equipamento se identificado",
+  "manufacturer": "fabricante se identificado", 
+  "year": ano_numerico_se_identificado,
   "normSource": "normas técnicas mencionadas",
-  "description": "descrição breve do documento",
-  "serialNumber": "número de série se mencionado",
+  "description": "descrição do documento baseada no conteúdo",
+  "serialNumber": "número de série se identificado",
   "plantUnit": "unidade/planta se mencionada",
   "systemArea": "área/sistema se mencionado",
-  "revisionVersion": "versão/revisão se mencionada",
-  "tags": ["palavras-chave", "relevantes", "do", "documento"]
+  "revisionVersion": "versão/revisão se identificada",
+  "tags": ["tipo_documento", "palavras-chave", "relevantes"]
 }
 
-IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`;
+IMPORTANTE: Seja preciso na classificação do tipo. Use as siglas MD, MC, ET como pistas principais.`;
 
   try {
     const response = await generateWithOllama('llama3', prompt);
