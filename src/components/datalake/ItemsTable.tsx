@@ -90,14 +90,14 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
     switch (docType) {
       case 'memorial-descritivo':
       case 'memorial':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-50 text-blue-700 border border-blue-200';
       case 'memoria-calculo':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'especificacao-tecnica':
       case 'especificacao':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-50 text-purple-700 border border-purple-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-50 text-gray-700 border border-gray-200';
     }
   };
 
@@ -129,7 +129,7 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
           </TableHeader>
           <TableBody>
             {items.map((item) => (
-              <TableRow key={item.id}>
+              <TableRow key={item.id} className="table-row-hover">
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium">{item.title}</div>
@@ -251,21 +251,26 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
   }
 
   return (
-    <Card>
+    <Card className="card-elegant">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Documentos no Data Lake ({items.length})
+        <CardTitle className="flex items-center gap-3 text-xl">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          Documentos no Data Lake
+          <Badge variant="secondary" className="ml-auto">
+            {items.length} documentos
+          </Badge>
         </CardTitle>
         
         {/* Busca */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input
             placeholder="Buscar por título, equipamento, fabricante..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 bg-muted/30 border-border/50 focus:bg-background transition-colors"
           />
         </div>
       </CardHeader>

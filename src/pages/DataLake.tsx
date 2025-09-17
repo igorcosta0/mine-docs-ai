@@ -30,11 +30,15 @@ const DataLake = () => {
     <div className="min-h-screen bg-background text-foreground">
       <AppHeader />
       <main className="container mx-auto px-4 py-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold">Data Lake</h1>
-          <p className="text-muted-foreground mt-2">
-            Repositório de documentos técnicos para referência na geração de novos documentos
-          </p>
+        <header className="mb-12">
+          <div className="card-elegant rounded-xl p-8 text-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">
+              Data Lake Técnico
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Repositório inteligente de documentos técnicos para referência e análise na geração de novos documentos
+            </p>
+          </div>
         </header>
 
         {!supaUserId && (
