@@ -129,7 +129,7 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
           </TableHeader>
           <TableBody>
             {items.map((item) => (
-              <TableRow key={item.id} className="table-row-hover">
+              <TableRow key={item.id} className="hover:bg-muted/50 transition-colors">
                 <TableCell>
                   <div className="space-y-1">
                     <div className="font-medium">{item.title}</div>
@@ -251,8 +251,8 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
   }
 
   return (
-    <Card className="card-elegant">
-      <CardHeader>
+    <Card className="shadow-sm border-2">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-3 text-xl">
           <div className="p-2 rounded-lg bg-primary/10">
             <FileText className="h-6 w-6 text-primary" />
@@ -270,7 +270,7 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
             placeholder="Buscar por título, equipamento, fabricante..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-muted/30 border-border/50 focus:bg-background transition-colors"
+            className="pl-10 focus:ring-2 focus:ring-primary/20 transition-all"
           />
         </div>
       </CardHeader>

@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import AppHeader from "@/components/layout/AppHeader";
+import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DOC_TYPES, buildPrompt } from "@/config/documentTypes";
 import { generateWithOllama } from "@/lib/ollama";
 import { BaseFields, DocumentRecord, DocumentType } from "@/types";
 import { upsertDocument } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
+import { FileText, Loader2, Sparkles } from "lucide-react";
 import OllamaAssistant from "@/components/ollama/OllamaAssistant";
 
 const NewDocument = () => {
@@ -70,69 +72,102 @@ const NewDocument = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <AppHeader />
-      <main className="container mx-auto px-4 py-8">
-        <section className="mb-6">
+    <AppLayout>
+      <div className="p-8 space-y-8">
+        <section className="max-w-4xl mx-auto">
           <OllamaAssistant />
         </section>
-        <Card className="max-w-3xl mx-auto">
-          <CardHeader>
-            <CardTitle>Novo — {def.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-6">
-              <fieldset className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Título</Label>
-                  <Input name="titulo" required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Autor</Label>
-                  <Input name="autor" required />
-                </div>
-                <div className="space-y-2">
-                  <Label>Data</Label>
-                  <Input type="date" name="data" defaultValue={new Date().toISOString().slice(0, 10)} />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Normas aplicáveis</Label>
-                  <Input name="normas" placeholder="ABNT, ISO, ASTM..." />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Descrição do projeto</Label>
-                  <Textarea name="descricao" />
-                </div>
-              </fieldset>
+        
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+              <FileText className="h-4 w-4" />
+              Geração de Documento
+            </div>
+            <h1 className="text-3xl font-bold mb-2">Novo {def.label}</h1>
+            <p className="text-muted-foreground">{def.description}</p>
+          </div>
 
-              <fieldset className="grid md:grid-cols-2 gap-4">
-                {def.technical.map((f) => (
-                  <div key={f.name} className={`space-y-2 ${f.type === "textarea" ? "md:col-span-2" : ""}`}>
-                    <Label>{f.label}</Label>
-                    {f.type === "textarea" ? (
-                      <Textarea name={f.name} placeholder={f.placeholder} />
-                    ) : (
-                      <Input name={f.name} placeholder={f.placeholder} />
-                    )}
+          <Card className="shadow-lg border-2">
+            <CardHeader className="pb-6">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Sparkles className="h-5 w-5 text-primary" />
+                Informações do Documento
+                <Badge variant="outline" className="ml-auto">
+                  {def.label}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={onSubmit} className="space-y-6">
+                <fieldset className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Input name="titulo" required className="focus:ring-2 focus:ring-primary/20" />
                   </div>
-                ))}
-              </fieldset>
+                  <div className="space-y-2">
+                    <Label>Autor</Label>
+                    <Input name="autor" required className="focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data</Label>
+                    <Input type="date" name="data" defaultValue={new Date().toISOString().slice(0, 10)} className="focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Normas aplicáveis</Label>
+                    <Input name="normas" placeholder="ABNT, ISO, ASTM..." className="focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Descrição do projeto</Label>
+                    <Textarea name="descricao" className="focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                </fieldset>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <Label>Modelo Ollama</Label>
-                  <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="llama3, mistral..." />
+                <fieldset className="grid md:grid-cols-2 gap-4">
+                  {def.technical.map((f) => (
+                    <div key={f.name} className={`space-y-2 ${f.type === "textarea" ? "md:col-span-2" : ""}`}>
+                      <Label>{f.label}</Label>
+                      {f.type === "textarea" ? (
+                        <Textarea name={f.name} placeholder={f.placeholder} className="focus:ring-2 focus:ring-primary/20" />
+                      ) : (
+                        <Input name={f.name} placeholder={f.placeholder} className="focus:ring-2 focus:ring-primary/20" />
+                      )}
+                    </div>
+                  ))}
+                </fieldset>
+
+                <div className="pt-4 border-t space-y-4">
+                  <div className="space-y-2">
+                    <Label>Modelo Ollama</Label>
+                    <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="llama3, mistral..." className="focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                  
+                  <Button type="submit" disabled={loading} className="w-full h-12 text-base font-medium">
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Gerando documento...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Gerar {def.label}
+                      </>
+                    )}
+                  </Button>
+                  
+                  {error && (
+                    <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg text-sm">
+                      <strong>Erro:</strong> {error}
+                    </div>
+                  )}
                 </div>
-                <Button type="submit" variant="hero" disabled={loading}>
-                  {loading ? "Gerando..." : "Gerar Documento"}
-                </Button>
-                {error && <div className="text-destructive text-sm">{error}</div>}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AppLayout>
   );
 };
 
