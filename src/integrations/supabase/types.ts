@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      document_knowledge: {
+        Row: {
+          confidence_score: number | null
+          content: string
+          created_at: string
+          document_type: string | null
+          id: string
+          keywords: string[] | null
+          knowledge_type: string
+          source_document_id: string | null
+          technical_area: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          content: string
+          created_at?: string
+          document_type?: string | null
+          id?: string
+          keywords?: string[] | null
+          knowledge_type: string
+          source_document_id?: string | null
+          technical_area?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          content?: string
+          created_at?: string
+          document_type?: string | null
+          id?: string
+          keywords?: string[] | null
+          knowledge_type?: string
+          source_document_id?: string | null
+          technical_area?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_knowledge_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "lake_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documentos_especificacao: {
         Row: {
           checksum_sha256: string

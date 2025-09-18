@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { generateWithOllama } from '@/lib/ollama';
 import { DocumentType, BaseFields } from '@/types';
 import { DOC_TYPES } from '@/config/documentTypes';
-import { Sparkles, MessageCircle, CheckCircle, AlertCircle, Lightbulb, Loader2 } from 'lucide-react';
+import { getUserKnowledge, DocumentKnowledge } from '@/lib/knowledgeProcessor';
+import { Sparkles, MessageCircle, CheckCircle, AlertCircle, Lightbulb, Loader2, Brain } from 'lucide-react';
 
 interface DocumentAIAssistantProps {
   documentType: DocumentType;
@@ -31,15 +32,48 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
   const [chatMessage, setChatMessage] = useState('');
   const [chatResponse, setChatResponse] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [userKnowledge, setUserKnowledge] = useState<DocumentKnowledge[]>([]);
+  const [knowledgeLoaded, setKnowledgeLoaded] = useState(false);
 
   const docConfig = DOC_TYPES[documentType];
 
-  // Gerar sugestões automáticas baseadas nos dados do formulário
+  // Carregar conhecimento do usuário
+  const loadUserKnowledge = async () => {
+    if (knowledgeLoaded) return;
+    
+    try {
+      const knowledge = await getUserKnowledge(
+        documentType,
+        undefined,
+        formData.titulo ? [formData.titulo.toLowerCase()] : undefined
+      );
+      setUserKnowledge(knowledge);
+      setKnowledgeLoaded(true);
+    } catch (error) {
+      console.error('Erro ao carregar conhecimento:', error);
+    }
+  };
+
+  // Gerar sugestões automáticas baseadas nos dados do formulário e conhecimento acumulado
   const generateSuggestions = async () => {
     if (!formData.titulo && !formData.descricao) return;
     
     setLoading(true);
     try {
+      // Buscar conhecimento relevante
+      const relevantKnowledge = await getUserKnowledge(
+        documentType,
+        undefined,
+        formData.titulo ? formData.titulo.split(' ').slice(0, 3) : undefined
+      );
+
+      const knowledgeContext = relevantKnowledge.length > 0 
+        ? `\n\nCONHECIMENTO ACUMULADO (use para melhorar as sugestões):
+${relevantKnowledge.slice(0, 5).map(k => 
+  `- ${k.title}: ${k.content.substring(0, 200)}...`
+).join('\n')}`
+        : '';
+
       const prompt = `Você é um assistente especializado em documentação técnica industrial. 
       
 Baseado nas informações fornecidas para um documento do tipo "${docConfig.label}", analise e forneça sugestões específicas:
@@ -47,7 +81,7 @@ Baseado nas informações fornecidas para um documento do tipo "${docConfig.labe
 Título: ${formData.titulo || 'Não informado'}
 Descrição: ${formData.descricao || 'Não informada'}
 Autor: ${formData.autor || 'Não informado'}
-Normas: ${formData.normas || 'Não informadas'}
+Normas: ${formData.normas || 'Não informadas'}${knowledgeContext}
 
 Para cada campo que precisa de melhoria, forneça uma sugestão específica no formato:
 CAMPO: [nome do campo]
@@ -58,10 +92,11 @@ TIPO: [melhoria/conclusão/correção]
 Foque em:
 - Melhorar títulos técnicos
 - Completar descrições insuficientes
-- Sugerir normas aplicáveis
+- Sugerir normas aplicáveis baseadas no conhecimento acumulado
 - Identificar informações em falta
+- Aplicar padrões aprendidos de documentos similares
 
-Seja preciso e técnico.`;
+Seja preciso e técnico. Use o conhecimento acumulado para fazer sugestões mais precisas.`;
 
       const response = await generateWithOllama('llama3', prompt);
       
@@ -94,6 +129,21 @@ Seja preciso e técnico.`;
     
     setChatLoading(true);
     try {
+      // Buscar conhecimento relevante para a pergunta
+      const chatKeywords = chatMessage.toLowerCase().split(' ').slice(0, 5);
+      const relevantKnowledge = await getUserKnowledge(
+        undefined,
+        undefined,
+        chatKeywords
+      );
+
+      const knowledgeContext = relevantKnowledge.length > 0 
+        ? `\n\nCONHECIMENTO RELEVANTE DISPONÍVEL:
+${relevantKnowledge.slice(0, 3).map(k => 
+  `- ${k.title}: ${k.content}`
+).join('\n')}`
+        : '';
+
       const prompt = `Você é um especialista em documentação técnica industrial. O usuário está criando um documento do tipo "${docConfig.label}" e tem a seguinte dúvida:
 
 "${chatMessage}"
@@ -101,9 +151,9 @@ Seja preciso e técnico.`;
 Contexto do documento:
 - Título: ${formData.titulo || 'Não definido'}
 - Descrição: ${formData.descricao || 'Não definida'}
-- Tipo: ${docConfig.label}
+- Tipo: ${docConfig.label}${knowledgeContext}
 
-Forneça uma resposta clara, técnica e útil para ajudar na criação do documento.`;
+Forneça uma resposta clara, técnica e útil para ajudar na criação do documento. Use o conhecimento disponível quando relevante para dar respostas mais precisas e baseadas em experiência prévia.`;
 
       const response = await generateWithOllama('llama3', prompt);
       setChatResponse(response);
@@ -115,6 +165,11 @@ Forneça uma resposta clara, técnica e útil para ajudar na criação do docume
     }
   };
 
+  // Carregar conhecimento ao montar o componente
+  useEffect(() => {
+    loadUserKnowledge();
+  }, [documentType]);
+
   // Gerar sugestões quando os dados do formulário mudarem
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -124,7 +179,7 @@ Forneça uma resposta clara, técnica e útil para ajudar na criação do docume
     }, 2000); // Debounce de 2 segundos
 
     return () => clearTimeout(timer);
-  }, [formData.titulo, formData.descricao, documentType]);
+  }, [formData.titulo, formData.descricao, documentType, knowledgeLoaded]);
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
@@ -146,6 +201,37 @@ Forneça uma resposta clara, técnica e útil para ajudar na criação do docume
 
   return (
     <div className="space-y-6">
+      {/* Base de Conhecimento */}
+      {userKnowledge.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Conhecimento Aplicável ({userKnowledge.length} itens)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {userKnowledge.slice(0, 5).map((knowledge, index) => (
+                <div key={index} className="text-sm p-2 bg-muted/50 rounded border-l-4 border-primary/30">
+                  <div className="font-medium">{knowledge.title}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {knowledge.content.substring(0, 100)}...
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {knowledge.keywords.slice(0, 3).map((keyword, i) => (
+                      <Badge key={i} variant="outline" className="text-xs px-1 py-0">
+                        {keyword}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Sugestões Automáticas */}
       <Card>
         <CardHeader>

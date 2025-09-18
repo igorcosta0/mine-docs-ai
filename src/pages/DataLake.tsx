@@ -7,6 +7,7 @@ import { getSupabaseUser, listLakeItems, type LakeItem } from "@/lib/datalake";
 import { Database, Upload, FileText, Sparkles } from "lucide-react";
 import UploadForm from "@/components/datalake/UploadForm";
 import ItemsTable from "@/components/datalake/ItemsTable";
+import { DocumentProcessor } from "@/components/datalake/DocumentProcessor";
 
 const DataLake = () => {
   const { toast } = useToast();
@@ -79,11 +80,18 @@ const DataLake = () => {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-5 gap-8">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
               <UploadForm 
                 onSuccess={refresh} 
                 canUpload={!!supaUserId} 
               />
+              
+              {supaUserId && items.length > 0 && (
+                <DocumentProcessor 
+                  documents={items}
+                  onProcessComplete={refresh}
+                />
+              )}
             </div>
             
             <div className="lg:col-span-3">
