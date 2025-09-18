@@ -60,37 +60,71 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
     
     setLoading(true);
     try {
-      // Buscar conhecimento específico rapidamente
-      const titleWords = formData.titulo?.toLowerCase().split(' ').slice(0, 2) || [];
+      // Buscar conhecimento específico com base no título atual
+      const titleWords = formData.titulo?.toLowerCase().split(' ').filter(w => w.length > 2) || [];
       const relevantKnowledge = await getUserKnowledge(
         documentType,
         undefined,
         titleWords.length > 0 ? titleWords : undefined
       );
 
-      // Focar no conhecimento mais relevante
-      const topKnowledge = relevantKnowledge.slice(0, 3);
+      // Calcular correspondência para determinar confiança
+      const calculateConfidence = (knowledge: DocumentKnowledge): 'high' | 'medium' | 'low' => {
+        if (!formData.titulo) return 'low';
+        
+        const titleLower = formData.titulo.toLowerCase();
+        const knowledgeTitle = knowledge.title.toLowerCase();
+        const knowledgeKeywords = knowledge.keywords.map(k => k.toLowerCase());
+        
+        // Alta confiança: correspondência exata de título ou palavras-chave
+        if (knowledgeTitle.includes(titleLower) || 
+            titleWords.some(word => knowledgeKeywords.includes(word)) ||
+            knowledge.confidence_score >= 0.9) {
+          return 'high';
+        }
+        
+        // Média confiança: correspondência parcial
+        if (titleWords.some(word => knowledgeTitle.includes(word)) ||
+            knowledge.confidence_score >= 0.7) {
+          return 'medium';
+        }
+        
+        return 'low';
+      };
+
+      // Focar no conhecimento mais relevante e ordenar por confiança
+      const topKnowledge = relevantKnowledge
+        .slice(0, 5)
+        .sort((a, b) => calculateConfidence(b) === 'high' ? 1 : -1);
+
       const knowledgeContext = topKnowledge.length > 0 
-        ? `\nCONHECIMENTO ESPECÍFICO APLICÁVEL:
-${topKnowledge.map(k => `${k.title}: ${k.content.substring(0, 150)}`).join('\n')}`
+        ? `\nCONHECIMENTO ESPECÍFICO APLICÁVEL (${topKnowledge.length} itens):
+${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 200)}`).join('\n')}`
         : '';
 
-      const prompt = `Assistente rápido para ${docConfig.label}. Dados atuais:
+      const prompt = `Assistente especializado para ${docConfig.label}. Dados atuais:
 Título: ${formData.titulo || '[vazio]'}
 Descrição: ${formData.descricao || '[vazio]'}
 Normas: ${formData.normas || '[vazio]'}${knowledgeContext}
 
-Forneça 2-3 sugestões DIRETAS no formato exato:
+Com base no conhecimento específico do Data Lake, forneça 2-3 sugestões DIRETAS:
+
+IMPORTANTE:
+- Use ALTA confiança quando há correspondência exata no conhecimento
+- Use MÉDIA confiança para correspondência parcial
+- Use BAIXA confiança apenas para sugestões genéricas
+
+Formato exato:
 CAMPO: [título/descricao/normas]
-SUGESTÃO: [texto específico para completar/melhorar]
+SUGESTÃO: [texto específico baseado no conhecimento do Data Lake]
 CONFIANÇA: [alta/média/baixa]
 TIPO: [melhoria/conclusão/correção]
 
-FOQUE: campos vazios, títulos genéricos, normas faltantes. Use conhecimento específico quando disponível.`;
+FOQUE em: aplicar conhecimento específico existente, completar campos vazios usando padrões já conhecidos.`;
 
       const response = await generateWithOllama('llama3', prompt);
       
-      // Parser básico das sugestões
+      // Parser das sugestões com melhoria na confiança
       const suggestionMatches = response.match(/CAMPO: (.+?)\nSUGESTÃO: (.+?)\nCONFIANÇA: (.+?)\nTIPO: (.+?)(?=\n|$)/g);
       
       if (suggestionMatches) {
@@ -98,8 +132,19 @@ FOQUE: campos vazios, títulos genéricos, normas faltantes. Use conhecimento es
           const lines = match.split('\n');
           const field = lines[0].replace('CAMPO: ', '').trim();
           const suggestion = lines[1].replace('SUGESTÃO: ', '').trim();
-          const confidence = lines[2].replace('CONFIANÇA: ', '').trim().toLowerCase() as 'high' | 'medium' | 'low';
+          let confidence = lines[2].replace('CONFIANÇA: ', '').trim().toLowerCase() as 'high' | 'medium' | 'low';
           const type = lines[3].replace('TIPO: ', '').trim().toLowerCase() as 'improvement' | 'completion' | 'correction';
+          
+          // Ajustar confiança baseada no conhecimento existente
+          if (topKnowledge.length > 0 && confidence === 'low') {
+            const hasRelevantKnowledge = topKnowledge.some(k => 
+              k.title.toLowerCase().includes(field.toLowerCase()) ||
+              suggestion.toLowerCase().includes(k.content.toLowerCase().substring(0, 50))
+            );
+            if (hasRelevantKnowledge) {
+              confidence = 'high';
+            }
+          }
           
           return { field, suggestion, confidence, type };
         });
@@ -119,26 +164,56 @@ FOQUE: campos vazios, títulos genéricos, normas faltantes. Use conhecimento es
     
     setChatLoading(true);
     try {
-      // Buscar conhecimento específico para a pergunta
-      const queryWords = chatMessage.toLowerCase().split(' ').filter(w => w.length > 3).slice(0, 3);
+      // Buscar conhecimento específico para a pergunta de forma mais inteligente
+      const queryWords = chatMessage.toLowerCase()
+        .split(' ')
+        .filter(w => w.length > 3)
+        .slice(0, 5);
+      
+      // Buscar também com base no título do documento atual
+      const documentWords = formData.titulo ? 
+        formData.titulo.toLowerCase().split(' ').filter(w => w.length > 2) : [];
+      
+      const allKeywords = [...queryWords, ...documentWords];
+      
       const relevantKnowledge = await getUserKnowledge(
         documentType,
         undefined,
-        queryWords
+        allKeywords
       );
 
-      const specificContext = relevantKnowledge.length > 0 
-        ? `\n\nCONHECIMENTO ESPECÍFICO DO SEU DATA LAKE:
-${relevantKnowledge.slice(0, 2).map(k => 
-  `${k.title}: ${k.content.substring(0, 300)}`
+      // Priorizar conhecimento mais relevante para a pergunta
+      const specificKnowledge = relevantKnowledge.filter(k => 
+        queryWords.some(word => 
+          k.title.toLowerCase().includes(word) || 
+          k.content.toLowerCase().includes(word) ||
+          k.keywords.some(keyword => keyword.toLowerCase().includes(word))
+        )
+      );
+
+      const knowledgeToUse = specificKnowledge.length > 0 ? specificKnowledge : relevantKnowledge;
+
+      const specificContext = knowledgeToUse.length > 0 
+        ? `\n\nCONHECIMENTO ESPECÍFICO DO SEU DATA LAKE (${knowledgeToUse.length} itens relevantes):
+${knowledgeToUse.slice(0, 3).map((k, i) => 
+  `${i+1}. ${k.title}: ${k.content.substring(0, 300)}`
 ).join('\n\n')}`
-        : '\n\n[Nenhum conhecimento específico encontrado no Data Lake]';
+        : '\n\n[Nenhum conhecimento específico encontrado no Data Lake para esta pergunta]';
 
-      const prompt = `Especialista em ${docConfig.label}. Documento atual: "${formData.titulo || 'Sem título'}"
+      const prompt = `Especialista em ${docConfig.label}. 
+Documento atual: "${formData.titulo || 'Sem título'}"
+Tipo: ${documentType}
 
-PERGUNTA: "${chatMessage}"${specificContext}
+PERGUNTA ESPECÍFICA: "${chatMessage}"${specificContext}
 
-Resposta ESPECÍFICA baseada no conhecimento do Data Lake do usuário (não genérica). Se não há conhecimento específico, indique isso e dê orientação geral breve.`;
+INSTRUÇÕES:
+- Use APENAS o conhecimento específico do Data Lake do usuário
+- Seja TÉCNICO e ESPECÍFICO, não genérico
+- Se há conhecimento relevante, dê uma resposta detalhada baseada nele
+- Se não há conhecimento específico, seja honesto e sugira que o usuário adicione mais documentos ao Data Lake
+- Referencie especificamente os itens de conhecimento que está usando
+
+Resposta técnica específica:`;
 
       const response = await generateWithOllama('llama3', prompt);
       setChatResponse(response);

@@ -32,7 +32,7 @@ export async function processDocumentWithOllama(
   document: LakeItem, 
   documentContent: string
 ): Promise<ExtractedKnowledge[]> {
-  const prompt = `Você é um especialista em análise de documentos técnicos industriais. Extraia conhecimento ESPECÍFICO para criação de documentos similares:
+  const prompt = `Você é um especialista em extração de conhecimento técnico. Extraia conhecimento ESPECÍFICO e DETALHADO para reutilização em novos documentos:
 
 DOCUMENTO FONTE:
 Título: ${document.title}
@@ -42,30 +42,36 @@ Equipamento: ${document.equipment_model || 'Não informado'}
 Fabricante: ${document.manufacturer || 'Não informado'}
 Normas: ${document.norm_source || 'Não informadas'}
 
-CONTEÚDO: ${documentContent.substring(0, 3000)} ${documentContent.length > 3000 ? '...' : ''}
+CONTEÚDO COMPLETO: ${documentContent}
 
-FOQUE APENAS nestes campos para novos documentos (EXCETO autor):
-- título: padrões de nomenclatura técnica
-- descricao: tipos de descrição para projetos similares  
-- normas: normas aplicáveis por área/equipamento
-- requisitos: especificações técnicas padrão
-- metodologia: procedimentos e métodos típicos
-- material: materiais comuns por aplicação
-- dimensoes: parâmetros dimensionais típicos
-- capacidade: faixas de capacidade por tipo
+EXTRAIA conhecimento ESPECÍFICO para estes campos (EXCETO autor):
+- TÍTULO: padrões de nomenclatura técnica exatos
+- DESCRIÇÃO: descrições específicas por tipo de projeto
+- NORMAS: normas técnicas aplicáveis por área/equipamento
+- REQUISITOS: especificações técnicas detalhadas
+- METODOLOGIA: procedimentos e métodos específicos
+- MATERIAL: materiais específicos por aplicação
+- DIMENSÕES: parâmetros dimensionais exatos
+- CAPACIDADE: faixas de capacidade específicas
+
+IMPORTANTE: 
+- Extraia valores ESPECÍFICOS, não genéricos
+- Use terminologia EXATA do documento
+- Foque em informações REUTILIZÁVEIS
+- Priorize conhecimento TÉCNICO específico
 
 Para cada conhecimento, use EXATAMENTE este formato:
 
 CONHECIMENTO_START
 TIPO: [concept/procedure/standard/specification/example]
-TÍTULO: [campo_específico - conhecimento extraído]
-CONTEÚDO: [valor/padrão específico que pode ser reutilizado]
-PALAVRAS_CHAVE: [3-5 palavras-chave relevantes]
-CONFIANÇA: [0.7-1.0 para dados específicos]
+TÍTULO: [campo_específico - conhecimento extraído específico]
+CONTEÚDO: [valor/padrão específico extraído do documento]
+PALAVRAS_CHAVE: [3-5 palavras-chave técnicas específicas]
+CONFIANÇA: [0.9-1.0 para dados específicos extraídos]
 ÁREA_TÉCNICA: [mechanical/electrical/civil/chemical/industrial/software]
 CONHECIMENTO_END
 
-Extraia 4-6 conhecimentos PRÁTICOS e REUTILIZÁVEIS para criação de documentos.`;
+Extraia 6-8 conhecimentos ESPECÍFICOS e TÉCNICOS para reutilização.`;
 
   try {
     const response = await generateWithOllama('llama3', prompt);
@@ -209,22 +215,52 @@ export async function getUserKnowledge(
       .select('*')
       .eq('user_id', user.user.id)
       .order('confidence_score', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .order('created_at', { ascending: false });
 
-    if (documentType) {
-      query = query.ilike('title', `%${documentType}%`);
+    // Busca mais específica por título e palavras-chave
+    if (keywords && keywords.length > 0) {
+      // Primeiro busca por correspondência exata nas palavras-chave
+      const keywordQuery = query.overlaps('keywords', keywords).limit(10);
+      const keywordResult = await keywordQuery;
+      
+      if (keywordResult.data && keywordResult.data.length > 0) {
+        return keywordResult.data.map(item => ({
+          ...item,
+          knowledge_type: item.knowledge_type as KnowledgeType
+        }));
+      }
+      
+      // Se não encontrou por palavras-chave, busca por similaridade no título
+      for (const keyword of keywords) {
+        const titleQuery = supabase
+          .from('document_knowledge')
+          .select('*')
+          .eq('user_id', user.user.id)
+          .or(`title.ilike.%${keyword}%,content.ilike.%${keyword}%`)
+          .order('confidence_score', { ascending: false })
+          .limit(15);
+        
+        const titleResult = await titleQuery;
+        if (titleResult.data && titleResult.data.length > 0) {
+          return titleResult.data.map(item => ({
+            ...item,
+            knowledge_type: item.knowledge_type as KnowledgeType
+          }));
+        }
+      }
     }
 
+    // Busca por tipo de documento
+    if (documentType) {
+      query = query.or(`document_type.ilike.%${documentType}%,title.ilike.%${documentType}%`);
+    }
+
+    // Busca por área técnica
     if (technicalArea) {
       query = query.eq('technical_area', technicalArea);
     }
 
-    if (keywords && keywords.length > 0) {
-      query = query.overlaps('keywords', keywords);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await query.limit(20);
 
     if (error) {
       console.error('Erro ao buscar conhecimento:', error);
