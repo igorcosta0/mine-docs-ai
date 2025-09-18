@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { deleteLakeItem, type LakeItem } from "@/lib/datalake";
 import { FileText, Trash2, Search, Filter } from "lucide-react";
 import DocumentViewer from "./DocumentViewer";
+import DocumentTypeChanger from "./DocumentTypeChanger";
 
 interface ItemsTableProps {
   items: LakeItem[];
@@ -209,6 +210,7 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
                 <TableCell>
                   <div className="flex gap-1">
                     <DocumentViewer item={item} />
+                    <DocumentTypeChanger item={item} onUpdate={onRefresh} />
                     <Button 
                       size="sm" 
                       variant="ghost" 

@@ -91,6 +91,19 @@ export async function uploadLakeFile(
   return { ok: true };
 }
 
+export async function updateLakeItemDocType(
+  itemId: string, 
+  newDocType: string
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from("lake_items")
+    .update({ doc_type: newDocType, updated_at: new Date().toISOString() })
+    .eq("id", itemId);
+  
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function deleteLakeItem(item: LakeItem): Promise<{ ok: boolean; error?: string }> {
   // Delete row first (RLS checks ownership)
   const { error: delErr } = await supabase.from("lake_items").delete().eq("id", item.id);
