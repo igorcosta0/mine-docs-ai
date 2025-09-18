@@ -54,49 +54,39 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
     }
   };
 
-  // Gerar sugestões automáticas baseadas nos dados do formulário e conhecimento acumulado
+  // Gerar sugestões rápidas e específicas
   const generateSuggestions = async () => {
     if (!formData.titulo && !formData.descricao) return;
     
     setLoading(true);
     try {
-      // Buscar conhecimento relevante
+      // Buscar conhecimento específico rapidamente
+      const titleWords = formData.titulo?.toLowerCase().split(' ').slice(0, 2) || [];
       const relevantKnowledge = await getUserKnowledge(
         documentType,
         undefined,
-        formData.titulo ? formData.titulo.split(' ').slice(0, 3) : undefined
+        titleWords.length > 0 ? titleWords : undefined
       );
 
-      const knowledgeContext = relevantKnowledge.length > 0 
-        ? `\n\nCONHECIMENTO ACUMULADO (use para melhorar as sugestões):
-${relevantKnowledge.slice(0, 5).map(k => 
-  `- ${k.title}: ${k.content.substring(0, 200)}...`
-).join('\n')}`
+      // Focar no conhecimento mais relevante
+      const topKnowledge = relevantKnowledge.slice(0, 3);
+      const knowledgeContext = topKnowledge.length > 0 
+        ? `\nCONHECIMENTO ESPECÍFICO APLICÁVEL:
+${topKnowledge.map(k => `${k.title}: ${k.content.substring(0, 150)}`).join('\n')}`
         : '';
 
-      const prompt = `Você é um assistente especializado em documentação técnica industrial. 
-      
-Baseado nas informações fornecidas para um documento do tipo "${docConfig.label}", analise e forneça sugestões específicas:
+      const prompt = `Assistente rápido para ${docConfig.label}. Dados atuais:
+Título: ${formData.titulo || '[vazio]'}
+Descrição: ${formData.descricao || '[vazio]'}
+Normas: ${formData.normas || '[vazio]'}${knowledgeContext}
 
-Título: ${formData.titulo || 'Não informado'}
-Descrição: ${formData.descricao || 'Não informada'}
-Autor: ${formData.autor || 'Não informado'}
-Normas: ${formData.normas || 'Não informadas'}${knowledgeContext}
-
-Para cada campo que precisa de melhoria, forneça uma sugestão específica no formato:
-CAMPO: [nome do campo]
-SUGESTÃO: [sua sugestão]
+Forneça 2-3 sugestões DIRETAS no formato exato:
+CAMPO: [título/descricao/normas]
+SUGESTÃO: [texto específico para completar/melhorar]
 CONFIANÇA: [alta/média/baixa]
 TIPO: [melhoria/conclusão/correção]
 
-Foque em:
-- Melhorar títulos técnicos
-- Completar descrições insuficientes
-- Sugerir normas aplicáveis baseadas no conhecimento acumulado
-- Identificar informações em falta
-- Aplicar padrões aprendidos de documentos similares
-
-Seja preciso e técnico. Use o conhecimento acumulado para fazer sugestões mais precisas.`;
+FOQUE: campos vazios, títulos genéricos, normas faltantes. Use conhecimento específico quando disponível.`;
 
       const response = await generateWithOllama('llama3', prompt);
       
@@ -123,37 +113,32 @@ Seja preciso e técnico. Use o conhecimento acumulado para fazer sugestões mais
     }
   };
 
-  // Chat com IA para dúvidas específicas
+  // Chat especializado com conhecimento específico
   const handleChatSubmit = async () => {
     if (!chatMessage.trim()) return;
     
     setChatLoading(true);
     try {
-      // Buscar conhecimento relevante para a pergunta
-      const chatKeywords = chatMessage.toLowerCase().split(' ').slice(0, 5);
+      // Buscar conhecimento específico para a pergunta
+      const queryWords = chatMessage.toLowerCase().split(' ').filter(w => w.length > 3).slice(0, 3);
       const relevantKnowledge = await getUserKnowledge(
+        documentType,
         undefined,
-        undefined,
-        chatKeywords
+        queryWords
       );
 
-      const knowledgeContext = relevantKnowledge.length > 0 
-        ? `\n\nCONHECIMENTO RELEVANTE DISPONÍVEL:
-${relevantKnowledge.slice(0, 3).map(k => 
-  `- ${k.title}: ${k.content}`
-).join('\n')}`
-        : '';
+      const specificContext = relevantKnowledge.length > 0 
+        ? `\n\nCONHECIMENTO ESPECÍFICO DO SEU DATA LAKE:
+${relevantKnowledge.slice(0, 2).map(k => 
+  `${k.title}: ${k.content.substring(0, 300)}`
+).join('\n\n')}`
+        : '\n\n[Nenhum conhecimento específico encontrado no Data Lake]';
 
-      const prompt = `Você é um especialista em documentação técnica industrial. O usuário está criando um documento do tipo "${docConfig.label}" e tem a seguinte dúvida:
+      const prompt = `Especialista em ${docConfig.label}. Documento atual: "${formData.titulo || 'Sem título'}"
 
-"${chatMessage}"
+PERGUNTA: "${chatMessage}"${specificContext}
 
-Contexto do documento:
-- Título: ${formData.titulo || 'Não definido'}
-- Descrição: ${formData.descricao || 'Não definida'}
-- Tipo: ${docConfig.label}${knowledgeContext}
-
-Forneça uma resposta clara, técnica e útil para ajudar na criação do documento. Use o conhecimento disponível quando relevante para dar respostas mais precisas e baseadas em experiência prévia.`;
+Resposta ESPECÍFICA baseada no conhecimento do Data Lake do usuário (não genérica). Se não há conhecimento específico, indique isso e dê orientação geral breve.`;
 
       const response = await generateWithOllama('llama3', prompt);
       setChatResponse(response);
@@ -170,13 +155,13 @@ Forneça uma resposta clara, técnica e útil para ajudar na criação do docume
     loadUserKnowledge();
   }, [documentType]);
 
-  // Gerar sugestões quando os dados do formulário mudarem
+  // Sugestões mais rápidas (1 segundo de debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (formData.titulo || formData.descricao) {
         generateSuggestions();
       }
-    }, 2000); // Debounce de 2 segundos
+    }, 1000); // Debounce reduzido para 1 segundo
 
     return () => clearTimeout(timer);
   }, [formData.titulo, formData.descricao, documentType, knowledgeLoaded]);

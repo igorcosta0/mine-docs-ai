@@ -32,9 +32,9 @@ export async function processDocumentWithOllama(
   document: LakeItem, 
   documentContent: string
 ): Promise<ExtractedKnowledge[]> {
-  const prompt = `Você é um especialista em análise de documentos técnicos industriais. Analise o seguinte documento e extraia conhecimento estruturado:
+  const prompt = `Você é um especialista em análise de documentos técnicos industriais. Extraia conhecimento ESPECÍFICO para criação de documentos similares:
 
-DOCUMENTO:
+DOCUMENTO FONTE:
 Título: ${document.title}
 Tipo: ${document.doc_type || 'Não especificado'}
 Descrição: ${document.description || 'Não informada'}
@@ -42,31 +42,30 @@ Equipamento: ${document.equipment_model || 'Não informado'}
 Fabricante: ${document.manufacturer || 'Não informado'}
 Normas: ${document.norm_source || 'Não informadas'}
 
-CONTEÚDO:
-${documentContent.substring(0, 4000)} ${documentContent.length > 4000 ? '...' : ''}
+CONTEÚDO: ${documentContent.substring(0, 3000)} ${documentContent.length > 3000 ? '...' : ''}
 
-INSTRUÇÕES:
-Extraia diferentes tipos de conhecimento deste documento. Para cada item de conhecimento encontrado, forneça no formato EXATO:
+FOQUE APENAS nestes campos para novos documentos (EXCETO autor):
+- título: padrões de nomenclatura técnica
+- descricao: tipos de descrição para projetos similares  
+- normas: normas aplicáveis por área/equipamento
+- requisitos: especificações técnicas padrão
+- metodologia: procedimentos e métodos típicos
+- material: materiais comuns por aplicação
+- dimensoes: parâmetros dimensionais típicos
+- capacidade: faixas de capacidade por tipo
+
+Para cada conhecimento, use EXATAMENTE este formato:
 
 CONHECIMENTO_START
 TIPO: [concept/procedure/standard/specification/example]
-TÍTULO: [título descritivo do conhecimento]
-CONTEÚDO: [explicação detalhada do conhecimento extraído]
-PALAVRAS_CHAVE: [palavra1,palavra2,palavra3]
-CONFIANÇA: [0.1 a 1.0]
+TÍTULO: [campo_específico - conhecimento extraído]
+CONTEÚDO: [valor/padrão específico que pode ser reutilizado]
+PALAVRAS_CHAVE: [3-5 palavras-chave relevantes]
+CONFIANÇA: [0.7-1.0 para dados específicos]
 ÁREA_TÉCNICA: [mechanical/electrical/civil/chemical/industrial/software]
 CONHECIMENTO_END
 
-Foque em extrair:
-- Conceitos técnicos importantes
-- Procedimentos operacionais
-- Especificações técnicas
-- Referências a normas
-- Exemplos práticos
-- Parâmetros de equipamentos
-- Critérios de qualidade
-
-Extraia entre 3-8 itens de conhecimento relevantes.`;
+Extraia 4-6 conhecimentos PRÁTICOS e REUTILIZÁVEIS para criação de documentos.`;
 
   try {
     const response = await generateWithOllama('llama3', prompt);

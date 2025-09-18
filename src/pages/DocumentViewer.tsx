@@ -59,16 +59,16 @@ const DocumentViewer = () => {
       <div className="container mx-auto py-8 px-6">
         <Card className="max-w-7xl mx-auto">
           <CardHeader>
-            <div className="flex items-start gap-4">
+            <div className="flex items-start justify-between w-full">
               <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Editor Avançado de Documentos
               </CardTitle>
               
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="gap-2">
+                  <Button variant="destructive" size="sm" className="gap-2 shrink-0">
                     <Trash2 className="h-4 w-4" />
-                    Deletar Documento
+                    Deletar
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
