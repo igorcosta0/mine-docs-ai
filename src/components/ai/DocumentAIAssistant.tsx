@@ -254,13 +254,37 @@ Resposta ESPECÍFICA baseada no conhecimento do Data Lake do usuário (não gen�
                     {suggestion.suggestion}
                   </p>
                   
+                  {/* Orientações por nível de confiança */}
+                  <div className="text-xs p-2 rounded bg-muted/30">
+                    {suggestion.confidence === 'high' && (
+                      <div className="flex items-center gap-1 text-green-700">
+                        <CheckCircle className="h-3 w-3" />
+                        <span>Alta confiança: Use sem hesitar, baseada em conhecimento específico</span>
+                      </div>
+                    )}
+                    {suggestion.confidence === 'medium' && (
+                      <div className="flex items-center gap-1 text-yellow-700">
+                        <AlertCircle className="h-3 w-3" />
+                        <span>Média confiança: Revise antes de aplicar</span>
+                      </div>
+                    )}
+                    {suggestion.confidence === 'low' && (
+                      <div className="flex items-center gap-1 text-red-700">
+                        <Lightbulb className="h-3 w-3" />
+                        <span>Baixa confiança: Use como ponto de partida, personalize bastante</span>
+                      </div>
+                    )}
+                  </div>
+                  
                   <Button 
                     size="sm" 
-                    variant="outline"
+                    variant={suggestion.confidence === 'high' ? 'default' : 'outline'}
                     onClick={() => onSuggestionApply(suggestion.field.toLowerCase(), suggestion.suggestion)}
                     className="w-full"
                   >
-                    Aplicar Sugestão
+                    {suggestion.confidence === 'high' ? '✓ Aplicar (Recomendado)' : 
+                     suggestion.confidence === 'medium' ? '⚠ Aplicar (Revisar)' : 
+                     '💡 Usar como Base'}
                   </Button>
                 </div>
               ))}
