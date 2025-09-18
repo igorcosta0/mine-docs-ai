@@ -7,8 +7,7 @@ import {
   FileText,
   Settings,
   LogOut,
-  ChevronRight,
-  Bot
+  ChevronRight
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,7 +29,6 @@ import { useNavigate } from "react-router-dom";
 const mainItems = [
   { title: "Dashboard", url: "/app", icon: Home },
   { title: "Data Lake", url: "/datalake", icon: Database },
-  { title: "Status da IA", url: "/ai-status", icon: Bot },
 ];
 
 const documentItems = [

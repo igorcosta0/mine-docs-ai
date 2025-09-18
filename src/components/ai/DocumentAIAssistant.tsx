@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { aiProvider } from '@/lib/aiProvider';
+import { generateWithOllama } from '@/lib/ollama';
 import { DocumentType, BaseFields } from '@/types';
 import { DOC_TYPES } from '@/config/documentTypes';
 import { getUserKnowledge, DocumentKnowledge } from '@/lib/knowledgeProcessor';
@@ -136,12 +136,7 @@ FONTE: [conhecimento_específico/interpretação_técnica/sugestão_padrão]
 
 FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, completar especificações técnicas.`;
 
-      const response = await aiProvider.generateText(prompt, {
-        provider: 'auto',
-        model: 'llama3',
-        temperature: 0.7,
-        maxTokens: 1500
-      });
+      const response = await generateWithOllama('llama3', prompt);
       
       // Parser das sugestões com análise avançada
       const suggestionMatches = response.match(/CAMPO: (.+?)\nSUGESTÃO: (.+?)\nCONFIANÇA: (.+?)\nTIPO: (.+?)(?:\nFONTE: (.+?))?(?=\n|$)/g);
@@ -269,12 +264,7 @@ INSTRUÇÕES:
 
 Resposta técnica específica:`;
 
-      const response = await aiProvider.generateText(prompt, {
-        provider: 'auto',
-        model: 'llama3',
-        temperature: 0.7,
-        maxTokens: 1000
-      });
+      const response = await generateWithOllama('llama3', prompt);
       setChatResponse(response);
       setChatMessage('');
     } catch (error) {

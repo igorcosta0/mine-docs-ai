@@ -402,10 +402,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_ai_availability: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      [_ in never]: never
     }
     Enums: {
       doc_status_enum: "ingested" | "processing" | "error"
