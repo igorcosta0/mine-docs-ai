@@ -7,7 +7,7 @@ import { listDocuments } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
 import { Link } from "react-router-dom";
 import { FileText, Zap, TrendingUp, Clock, Plus, Sparkles } from "lucide-react";
-import { AIProviderStatus } from "@/components/ai/AIProviderStatus";
+import { AIActiveIndicator } from '@/components/ai/AIActiveIndicator';
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -46,9 +46,9 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* AI Provider Status */}
+        {/* Indicador da IA Ativa */}
         <section className="max-w-4xl mx-auto">
-          <AIProviderStatus />
+          <AIActiveIndicator />
         </section>
 
         {/* Document Types */}
