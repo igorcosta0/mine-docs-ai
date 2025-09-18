@@ -336,6 +336,7 @@ export type Database = {
       }
       lake_items: {
         Row: {
+          checksum_sha256: string | null
           created_at: string
           description: string | null
           doc_type: string | null
@@ -355,6 +356,7 @@ export type Database = {
           year: number | null
         }
         Insert: {
+          checksum_sha256?: string | null
           created_at?: string
           description?: string | null
           doc_type?: string | null
@@ -374,6 +376,7 @@ export type Database = {
           year?: number | null
         }
         Update: {
+          checksum_sha256?: string | null
           created_at?: string
           description?: string | null
           doc_type?: string | null

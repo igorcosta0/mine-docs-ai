@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { uploadLakeFile, type UploadLakeFileOptions } from "@/lib/datalake";
+import { uploadLakeFile, uploadLakeFileWithDuplicateCheck, replaceLakeItem, type UploadLakeFileOptions } from "@/lib/datalake";
 import { processDocumentAutomatically } from "@/lib/pdfProcessor";
+import { DuplicateAlert } from "./DuplicateAlert";
+import { DuplicateAction, DuplicateCheckResult } from "@/lib/duplicateDetection";
 import { Upload, Brain, FileText } from "lucide-react";
 
 interface UploadFormProps {
@@ -22,6 +24,12 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [autoMode, setAutoMode] = useState(true);
   const [processingProgress, setProcessingProgress] = useState("");
+  
+  // Estados para controle de duplicatas
+  const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingOptions, setPendingOptions] = useState<UploadLakeFileOptions | null>(null);
+  const [duplicateResult, setDuplicateResult] = useState<DuplicateCheckResult | null>(null);
   
   // Apenas campos essenciais
   const [docType, setDocType] = useState("");
@@ -42,6 +50,87 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     setFiles([]);
     setDocType("");
     setProcessingProgress("");
+    // Reset estados de duplicata
+    setShowDuplicateAlert(false);
+    setPendingFile(null);
+    setPendingOptions(null);
+    setDuplicateResult(null);
+  };
+
+  // Função auxiliar para processar upload com verificação de duplicatas
+  const processUploadWithDuplicateCheck = async (file: File, options: UploadLakeFileOptions): Promise<{
+    ok: boolean;
+    error?: string;
+    needsDecision?: boolean;
+  }> => {
+    const result = await uploadLakeFileWithDuplicateCheck(file, options);
+    
+    if (result.needsUserDecision && result.duplicateCheck) {
+      // Mostrar alerta de duplicata
+      setPendingFile(file);
+      setPendingOptions(options);
+      setDuplicateResult(result.duplicateCheck);
+      setShowDuplicateAlert(true);
+      return { ok: true, needsDecision: true };
+    }
+    
+    return { 
+      ok: result.ok, 
+      error: result.error,
+      needsDecision: false
+    };
+  };
+
+  // Handler para decisões de duplicata
+  const handleDuplicateAction = async (action: DuplicateAction, replacedItemId?: string) => {
+    if (!pendingFile || !pendingOptions) return;
+    
+    try {
+      setShowDuplicateAlert(false);
+      
+      if (action === 'cancel') {
+        // Cancelar upload
+        setPendingFile(null);
+        setPendingOptions(null);
+        setDuplicateResult(null);
+        return;
+      }
+      
+      if (action === 'replace' && replacedItemId) {
+        // Substituir arquivo existente
+        const result = await replaceLakeItem(pendingFile, pendingOptions, replacedItemId);
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+        toast({
+          title: "Arquivo substituído",
+          description: "O documento foi substituído com sucesso.",
+        });
+      } else if (action === 'keep_both') {
+        // Manter ambos - fazer upload normal
+        const result = await uploadLakeFile(pendingFile, pendingOptions);
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+        toast({
+          title: "Upload concluído",
+          description: "O documento foi adicionado ao Data Lake.",
+        });
+      }
+      
+      // Limpar estados
+      setPendingFile(null);
+      setPendingOptions(null);
+      setDuplicateResult(null);
+      onSuccess();
+      
+    } catch (error: any) {
+      toast({
+        title: "Erro no upload",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAutoProcess = async (files: File[]) => {
@@ -70,7 +159,18 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
           tags: metadata.tags,
         };
 
-        await uploadLakeFile(file, options);
+        // Verificar duplicatas antes do upload
+        const result = await processUploadWithDuplicateCheck(file, options);
+        
+        if (result.needsDecision) {
+          // Interromper processamento para decisão do usuário
+          setProcessing(false);
+          return;
+        }
+        
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
       }
       
       toast({
@@ -119,9 +219,17 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
           tags: docType ? [docType] : ['documento'],
         };
 
-        const { ok, error } = await uploadLakeFile(file, options);
-        if (!ok) {
-          throw new Error(error);
+        // Verificar duplicatas antes do upload
+        const result = await processUploadWithDuplicateCheck(file, options);
+        
+        if (result.needsDecision) {
+          // Interromper processamento para decisão do usuário
+          setLoading(false);
+          return;
+        }
+        
+        if (!result.ok) {
+          throw new Error(result.error);
         }
       }
       
@@ -244,6 +352,17 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
             </p>
           )}
         </form>
+
+        {/* Modal de alerta de duplicatas */}
+        {showDuplicateAlert && duplicateResult && pendingFile && (
+          <DuplicateAlert
+            isOpen={showDuplicateAlert}
+            onClose={() => setShowDuplicateAlert(false)}
+            onAction={handleDuplicateAction}
+            fileName={pendingFile.name}
+            duplicateResult={duplicateResult}
+          />
+        )}
       </CardContent>
     </Card>
   );
