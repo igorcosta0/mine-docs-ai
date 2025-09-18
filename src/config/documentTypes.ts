@@ -9,10 +9,11 @@ export type FieldDef = {
 
 export const DOC_TYPES: Record<
   DocumentType,
-  { label: string; technical: FieldDef[] }
+  { label: string; description: string; technical: FieldDef[] }
 > = {
   "especificacao": {
     label: "Especificação Técnica",
+    description: "Documento técnico que define requisitos, tolerâncias e critérios de aceitação para projetos industriais",
     technical: [
       { name: "requisitos", label: "Requisitos Técnicos", type: "textarea", placeholder: "Requisitos de desempenho, materiais, segurança..." },
       { name: "tolerancias", label: "Tolerâncias", type: "textarea", placeholder: "Tolerâncias dimensionais e operacionais" },
@@ -20,6 +21,7 @@ export const DOC_TYPES: Record<
   },
   "folha-dados": {
     label: "Folha de Dados",
+    description: "Documento com especificações técnicas detalhadas de equipamentos e materiais",
     technical: [
       { name: "material", label: "Material", type: "text", placeholder: "Aço ASTM A36, Inox 304..." },
       { name: "dimensoes", label: "Dimensões", type: "text", placeholder: "Comprimento x Largura x Altura / DN / espessura" },
@@ -28,6 +30,7 @@ export const DOC_TYPES: Record<
   },
   "memorial": {
     label: "Memorial Descritivo",
+    description: "Documento que descreve metodologias, justificativas técnicas e escopo do projeto",
     technical: [
       { name: "metodologia", label: "Metodologia", type: "textarea", placeholder: "Procedimentos, etapas, premissas" },
       { name: "justificativas", label: "Justificativas Técnicas", type: "textarea", placeholder: "Critérios de projeto, alternativas avaliadas" },
