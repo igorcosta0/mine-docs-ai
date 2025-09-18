@@ -102,54 +102,103 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
 ${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 200)}`).join('\n')}`
         : '';
 
-      const prompt = `Assistente especializado para ${docConfig.label}. Dados atuais:
-Título: ${formData.titulo || '[vazio]'}
-Descrição: ${formData.descricao || '[vazio]'}
-Normas: ${formData.normas || '[vazio]'}${knowledgeContext}
+      const prompt = `Assistente especializado para ${docConfig.label} com análise inteligente de contexto. 
 
-Com base no conhecimento específico do Data Lake, forneça 2-3 sugestões DIRETAS:
+DADOS ATUAIS DO DOCUMENTO:
+Título: "${formData.titulo || '[vazio]'}"
+Descrição: "${formData.descricao || '[vazio]'}"
+Normas: "${formData.normas || '[vazio]'}"${knowledgeContext}
 
-IMPORTANTE:
-- Use ALTA confiança quando há correspondência exata no conhecimento
-- Use MÉDIA confiança para correspondência parcial
-- Use BAIXA confiança apenas para sugestões genéricas
+ALGORITMO DE SUGESTÕES INTELIGENTES:
+1. Para ALTA confiança: use conhecimento específico com correspondência exata
+2. Para MÉDIA confiança: use conhecimento com correspondência parcial ou interpretação
+3. Para BAIXA confiança: use apenas quando necessário completar campo essencial
+
+REGRAS ESPECÍFICAS:
+- Analise o título e identifique padrões técnicos no conhecimento disponível
+- Para descrições, use especificações técnicas específicas do conhecimento
+- Para normas, referencie normas específicas encontradas no conhecimento técnico
+- Priorize informações numéricas, modelos, fabricantes, especificações
+
+CAMPOS PARA SUGERIR:
+- título: melhorar precisão técnica e nomenclatura padrão
+- descricao: completar com especificações técnicas detalhadas
+- normas: adicionar normas técnicas específicas aplicáveis
+
+FORNEÇA 2-4 SUGESTÕES TÉCNICAS ESPECÍFICAS:
 
 Formato exato:
 CAMPO: [título/descricao/normas]
-SUGESTÃO: [texto específico baseado no conhecimento do Data Lake]
+SUGESTÃO: [texto específico baseado no conhecimento técnico do Data Lake]
 CONFIANÇA: [alta/média/baixa]
-TIPO: [melhoria/conclusão/correção]
+TIPO: [melhoria/completar/padronizar]
+FONTE: [conhecimento_específico/interpretação_técnica/sugestão_padrão]
 
-FOQUE em: aplicar conhecimento específico existente, completar campos vazios usando padrões já conhecidos.`;
+FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, completar especificações técnicas.`;
 
       const response = await generateWithOllama('llama3', prompt);
       
-      // Parser das sugestões com melhoria na confiança
-      const suggestionMatches = response.match(/CAMPO: (.+?)\nSUGESTÃO: (.+?)\nCONFIANÇA: (.+?)\nTIPO: (.+?)(?=\n|$)/g);
+      // Parser das sugestões com análise avançada
+      const suggestionMatches = response.match(/CAMPO: (.+?)\nSUGESTÃO: (.+?)\nCONFIANÇA: (.+?)\nTIPO: (.+?)(?:\nFONTE: (.+?))?(?=\n|$)/g);
       
       if (suggestionMatches) {
         const parsedSuggestions: AISuggestion[] = suggestionMatches.map(match => {
           const lines = match.split('\n');
           const field = lines[0].replace('CAMPO: ', '').trim();
           const suggestion = lines[1].replace('SUGESTÃO: ', '').trim();
-          let confidence = lines[2].replace('CONFIANÇA: ', '').trim().toLowerCase() as 'high' | 'medium' | 'low';
+          let confidenceText = lines[2].replace('CONFIANÇA: ', '').trim().toLowerCase();
           const type = lines[3].replace('TIPO: ', '').trim().toLowerCase() as 'improvement' | 'completion' | 'correction';
+          const fonte = lines[4] ? lines[4].replace('FONTE: ', '').trim() : '';
           
-          // Ajustar confiança baseada no conhecimento existente
-          if (topKnowledge.length > 0 && confidence === 'low') {
-            const hasRelevantKnowledge = topKnowledge.some(k => 
+          // Converter confiança do português para inglês
+          let confidence: 'high' | 'medium' | 'low' = 'low';
+          if (confidenceText === 'alta' || confidenceText === 'high') confidence = 'high';
+          else if (confidenceText === 'média' || confidenceText === 'medium') confidence = 'medium';
+          else confidence = 'low';
+          
+          // Algoritmo inteligente de ajuste de confiança
+          let confidenceScore = 0;
+          
+          // Pontuação base por confiança declarada
+          if (confidence === 'high') confidenceScore = 80;
+          else if (confidence === 'medium') confidenceScore = 60;
+          else confidenceScore = 40;
+          
+          // Bonificação por conhecimento específico disponível
+          if (topKnowledge.length > 0) {
+            const hasDirectMatch = topKnowledge.some(k => 
               k.title.toLowerCase().includes(field.toLowerCase()) ||
-              suggestion.toLowerCase().includes(k.content.toLowerCase().substring(0, 50))
+              k.keywords.some(kw => suggestion.toLowerCase().includes(kw.toLowerCase()))
             );
-            if (hasRelevantKnowledge) {
-              confidence = 'high';
-            }
+            
+            const hasContentMatch = topKnowledge.some(k => 
+              suggestion.toLowerCase().includes(k.content.toLowerCase().substring(0, 100))
+            );
+            
+            if (hasDirectMatch) confidenceScore += 20;
+            if (hasContentMatch) confidenceScore += 15;
+            if (fonte === 'conhecimento_específico') confidenceScore += 10;
           }
+          
+          // Bonificação por qualidade da sugestão
+          if (suggestion.length > 100) confidenceScore += 10;
+          if (/\b(norma|especificação|técnico|padrão)\b/i.test(suggestion)) confidenceScore += 10;
+          
+          // Redefinir confiança baseada na pontuação final
+          if (confidenceScore >= 90) confidence = 'high';
+          else if (confidenceScore >= 70) confidence = 'medium';
+          else confidence = 'low';
           
           return { field, suggestion, confidence, type };
         });
         
-        setSuggestions(parsedSuggestions);
+        // Ordenar por confiança e relevância
+        const sortedSuggestions = parsedSuggestions.sort((a, b) => {
+          const confidenceOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+          return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
+        });
+        
+        setSuggestions(sortedSuggestions);
       }
     } catch (error) {
       console.error('Erro ao gerar sugestões:', error);
