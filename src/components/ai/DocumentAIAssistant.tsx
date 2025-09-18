@@ -354,7 +354,18 @@ Resposta técnica específica:`;
                   <Button 
                     size="sm" 
                     variant={suggestion.confidence === 'high' ? 'default' : 'outline'}
-                    onClick={() => onSuggestionApply(suggestion.field.toLowerCase(), suggestion.suggestion)}
+                    onClick={() => {
+                      // Mapear nomes de campos corretamente
+                      const fieldMapping: { [key: string]: string } = {
+                        'título': 'titulo',
+                        'titulo': 'titulo', 
+                        'descrição': 'descricao',
+                        'descricao': 'descricao',
+                        'normas': 'normas'
+                      };
+                      const mappedField = fieldMapping[suggestion.field.toLowerCase()] || suggestion.field.toLowerCase();
+                      onSuggestionApply(mappedField, suggestion.suggestion);
+                    }}
                     className="w-full"
                   >
                     {suggestion.confidence === 'high' ? '✓ Aplicar (Recomendado)' : 
