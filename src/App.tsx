@@ -12,6 +12,7 @@ import NewDocument from "./pages/NewDocument";
 import DocumentViewer from "./pages/DocumentViewer";
 import DataLake from "./pages/DataLake";
 import { requireAuth } from "@/lib/auth";
+import { PlatformIndicator } from '@/components/ui/platform-indicator';
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <PlatformIndicator />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

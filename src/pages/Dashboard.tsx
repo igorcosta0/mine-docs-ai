@@ -5,19 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { listDocuments } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
-import { checkOllama } from "@/lib/ollama";
 import { Link } from "react-router-dom";
-import { FileText, Zap, TrendingUp, Clock, Plus, Sparkles, Activity } from "lucide-react";
-import OllamaAssistant from "@/components/ollama/OllamaAssistant";
+import { FileText, Zap, TrendingUp, Clock, Plus, Sparkles } from "lucide-react";
+import { AIProviderStatus } from "@/components/ai/AIProviderStatus";
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
-  const [ollamaOk, setOllamaOk] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = "Dashboard — MinerDocs";
     getCurrentUser().then(user => setUserId(user?.id || null));
-    checkOllama().then(setOllamaOk);
   }, []);
 
   const docs = useMemo(() => listDocuments(userId), [userId]);
@@ -41,10 +38,6 @@ const Dashboard = () => {
             </p>
             
             <div className="flex items-center justify-center gap-4 mb-8">
-              <Badge variant={ollamaOk ? "default" : "secondary"} className="px-4 py-2">
-                <Activity className="h-4 w-4 mr-2" />
-                Ollama: {ollamaOk ? "Conectado" : "Indisponível"}
-              </Badge>
               <Badge variant="outline" className="px-4 py-2">
                 <FileText className="h-4 w-4 mr-2" />
                 {docs.length} documentos
@@ -53,9 +46,9 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* AI Assistant */}
+        {/* AI Provider Status */}
         <section className="max-w-4xl mx-auto">
-          <OllamaAssistant />
+          <AIProviderStatus />
         </section>
 
         {/* Document Types */}
