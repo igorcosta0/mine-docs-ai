@@ -36,3 +36,14 @@ export function getDocument(id: string): DocumentRecord | undefined {
   const s = readStore();
   return s.docs.find((d) => d.id === id);
 }
+
+export function deleteDocument(id: string): boolean {
+  const s = readStore();
+  const initialLength = s.docs.length;
+  s.docs = s.docs.filter((d) => d.id !== id);
+  const wasDeleted = s.docs.length < initialLength;
+  if (wasDeleted) {
+    writeStore(s);
+  }
+  return wasDeleted;
+}

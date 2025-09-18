@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { getDocument, upsertDocument } from "@/lib/storage";
+import { getDocument, upsertDocument, deleteDocument } from "@/lib/storage";
 import { exportToDocx, exportToPDF } from "@/lib/exporters";
 import { DocumentAnalyzer } from "@/components/documents/DocumentAnalyzer";
 import { DocumentExporter } from "@/components/documents/DocumentExporter";
 import { DocumentTemplates } from "@/components/documents/DocumentTemplates";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 
 const DocumentViewer = () => {
   const { id } = useParams();
@@ -37,6 +39,16 @@ const DocumentViewer = () => {
     toast.success("Documento salvo com sucesso!");
   }
 
+  function handleDelete() {
+    const wasDeleted = deleteDocument(doc.id);
+    if (wasDeleted) {
+      toast.success("Documento deletado com sucesso!");
+      nav("/"); // Redirecionar para página inicial
+    } else {
+      toast.error("Erro ao deletar documento");
+    }
+  }
+
   const handleTemplateSelect = (content: string) => {
     setText(content);
     toast.success("Template aplicado com sucesso!");
@@ -47,12 +59,39 @@ const DocumentViewer = () => {
       <div className="container mx-auto py-8 px-6">
         <Card className="max-w-7xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Editor Avançado de Documentos
-            </CardTitle>
-            <p className="text-muted-foreground">
-              Crie, edite, analise e exporte documentos técnicos com ferramentas profissionais
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Editor Avançado de Documentos
+                </CardTitle>
+                <p className="text-muted-foreground">
+                  Crie, edite, analise e exporte documentos técnicos com ferramentas profissionais
+                </p>
+              </div>
+              
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Deletar Documento
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja deletar o documento "{title}"? Esta ação não pode ser desfeita.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Deletar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </CardHeader>
           
           <CardContent>
