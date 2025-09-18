@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { updateLakeItemDocType, type LakeItem } from "@/lib/datalake";
 import { Edit, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 interface DocumentTypeChangerProps {
   item: LakeItem;
@@ -13,15 +12,14 @@ interface DocumentTypeChangerProps {
 }
 
 const documentTypes = [
-  { value: "memorial-descritivo", label: "Memorial Descritivo", route: "/new-document?tipo=memorial" },
-  { value: "memoria-calculo", label: "Memória de Cálculo", route: "/new-document?tipo=memorial" },
-  { value: "especificacao-tecnica", label: "Especificação Técnica", route: "/new-document?tipo=especificacao" },
-  { value: "folha-dados", label: "Folha de Dados", route: "/new-document?tipo=folha-dados" },
+  { value: "memorial-descritivo", label: "Memorial Descritivo" },
+  { value: "memoria-calculo", label: "Memória de Cálculo" },
+  { value: "especificacao-tecnica", label: "Especificação Técnica" },
+  { value: "folha-dados", label: "Folha de Dados" },
 ];
 
 const DocumentTypeChanger = ({ item, onUpdate }: DocumentTypeChangerProps) => {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState<string>(item.doc_type || "");
   const [isOpen, setIsOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -47,22 +45,12 @@ const DocumentTypeChanger = ({ item, onUpdate }: DocumentTypeChangerProps) => {
 
     toast({
       title: "Tipo alterado com sucesso",
-      description: "Redirecionando para a página do documento..."
+      description: "O documento foi movido para a nova categoria."
     });
-
-    // Encontrar a rota correspondente ao novo tipo
-    const docTypeConfig = documentTypes.find(dt => dt.value === selectedType);
     
     setIsUpdating(false);
     setIsOpen(false);
     onUpdate();
-
-    // Redirecionar após um breve delay para mostrar o toast
-    setTimeout(() => {
-      if (docTypeConfig) {
-        navigate(docTypeConfig.route);
-      }
-    }, 1000);
   };
 
   return (
