@@ -60,7 +60,7 @@ const DocumentViewer = () => {
         <Card className="max-w-7xl mx-auto">
           <CardHeader>
             <div className="flex items-start justify-between w-full">
-              <CardTitle className="text-3xl font-bold text-foreground">
+              <CardTitle className="text-3xl font-bold text-primary">
                 Editor Avançado de Documentos
               </CardTitle>
               
