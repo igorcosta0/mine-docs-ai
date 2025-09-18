@@ -18,13 +18,27 @@ class AIProviderManager {
     maxTokens: 2000
   };
 
+  setPreferredProvider(provider: AIProvider): void {
+    localStorage.setItem('preferred-ai-provider', provider);
+  }
+
+  getPreferredProvider(): AIProvider {
+    const stored = localStorage.getItem('preferred-ai-provider');
+    return (stored as AIProvider) || 'auto';
+  }
+
   async generateText(prompt: string, config?: Partial<AIConfig>): Promise<string> {
     const finalConfig = { ...this.defaultConfig, ...config };
     
     try {
-      // Auto-detect melhor provider disponível
+      // Usa preferência do usuário ou auto-detect
       if (finalConfig.provider === 'auto') {
-        finalConfig.provider = await this.detectBestProvider();
+        const preferred = this.getPreferredProvider();
+        if (preferred !== 'auto') {
+          finalConfig.provider = preferred;
+        } else {
+          finalConfig.provider = await this.detectBestProvider();
+        }
       }
 
       switch (finalConfig.provider) {

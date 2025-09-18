@@ -12,11 +12,25 @@ export const AIActiveIndicator: React.FC = () => {
 
   const checkActiveProvider = async () => {
     try {
-      const providers = await aiProvider.getAvailableProviders();
-      const available = providers.find(p => p.available);
-      setActiveProvider(available?.provider || '');
+      const preferred = aiProvider.getPreferredProvider();
+      
+      if (preferred !== 'auto') {
+        // Se o usuário tem uma preferência específica, usa ela
+        setActiveProvider(preferred);
+      } else {
+        // Se está no automático, verifica qual está sendo usado
+        const providers = await aiProvider.getAvailableProviders();
+        if (providers.find(p => p.provider === 'ollama' && p.available)) {
+          setActiveProvider('ollama');
+        } else if (providers.find(p => p.provider === 'openai' && p.available)) {
+          setActiveProvider('openai');
+        } else {
+          setActiveProvider('none');
+        }
+      }
     } catch (error) {
       console.error('Erro ao verificar provedor ativo:', error);
+      setActiveProvider('none');
     } finally {
       setLoading(false);
     }
@@ -31,16 +45,23 @@ export const AIActiveIndicator: React.FC = () => {
       case 'ollama':
         return {
           name: 'Ollama',
-          description: 'IA Local',
+          description: 'IA Local Selecionada',
           icon: <Server className="w-4 h-4" />,
           color: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
         };
       case 'openai':
         return {
           name: 'OpenAI',
-          description: 'IA Remota',
+          description: 'IA Remota Selecionada',
           icon: <Cloud className="w-4 h-4" />,
           color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+        };
+      case 'auto':
+        return {
+          name: 'Automático',
+          description: 'Seleção Inteligente',
+          icon: <Bot className="w-4 h-4" />,
+          color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
         };
       default:
         return {

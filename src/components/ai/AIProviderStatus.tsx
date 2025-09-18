@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, RefreshCw, Bot, Cloud, Server } from 'lucide-react';
 import { aiProvider } from '@/lib/aiProvider';
+import { AIProviderToggle } from './AIProviderToggle';
 
 interface ProviderStatus {
   provider: string;
@@ -57,26 +58,29 @@ export const AIProviderStatus: React.FC = () => {
   const unavailableProviders = providers.filter(p => !p.available);
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Bot className="w-5 h-5" />
-          Status dos Provedores de IA
-        </CardTitle>
-        <Button 
-          onClick={checkProviders}
-          disabled={loading}
-          size="sm"
-          variant="outline"
-        >
-          {loading ? (
-            <RefreshCw className="w-4 h-4 animate-spin" />
-          ) : (
-            <RefreshCw className="w-4 h-4" />
-          )}
-          Atualizar
-        </Button>
-      </CardHeader>
+    <div className="space-y-6">
+      <AIProviderToggle />
+      
+      <Card className="w-full">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Bot className="w-5 h-5" />
+            Status dos Provedores de IA
+          </CardTitle>
+          <Button 
+            onClick={checkProviders}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+          >
+            {loading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            Atualizar
+          </Button>
+        </CardHeader>
       <CardContent className="space-y-4">
         {availableProviders.length > 0 && (
           <div className="space-y-3">
@@ -169,11 +173,12 @@ export const AIProviderStatus: React.FC = () => {
 
         <div className="pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            💡 <strong>Sistema Híbrido:</strong> Automaticamente usa o melhor provedor disponível.
-            Ollama (local) tem prioridade, com fallback para OpenAI quando necessário.
+            💡 <strong>Sistema Híbrido:</strong> Use o seletor acima para escolher um provedor específico
+            ou deixe no automático para detecção inteligente.
           </p>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 };
