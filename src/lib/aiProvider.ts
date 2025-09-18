@@ -49,21 +49,29 @@ class AIProviderManager {
   }
 
   private async detectBestProvider(): Promise<AIProvider> {
-    // Tenta Ollama primeiro (local, gratuito)
-    if (await checkOllama()) {
-      return 'ollama';
-    }
-
-    // Verifica se tem API keys configuradas
     try {
-      const { data } = await supabase.functions.invoke('check-ai-availability');
+      const { data, error } = await supabase.functions.invoke('check-ai-providers');
+      
+      if (error) {
+        console.warn('Erro ao verificar providers:', error);
+        return 'ollama'; // fallback
+      }
+
+      console.log('Providers disponíveis:', data);
+      
+      if (data?.bestProvider && data.bestProvider !== 'none') {
+        return data.bestProvider;
+      }
+      
+      // Fallback manual baseado na disponibilidade
+      if (data?.ollama) return 'ollama';
       if (data?.openai) return 'openai';
-      if (data?.claude) return 'claude';
+      
     } catch (error) {
-      console.warn('Erro ao verificar APIs externas:', error);
+      console.warn('Erro ao detectar melhor provider:', error);
     }
 
-    // Default para Ollama se nada mais estiver disponível
+    // Default para Ollama
     return 'ollama';
   }
 
@@ -87,7 +95,9 @@ class AIProviderManager {
     });
 
     if (error) throw new Error(`Erro OpenAI: ${error.message}`);
-    return data.generatedText;
+    if (data?.error) throw new Error(`Erro OpenAI: ${data.error}`);
+    
+    return data?.text || '';
   }
 
   private async generateWithClaude(prompt: string, config: AIConfig): Promise<string> {
@@ -122,36 +132,33 @@ class AIProviderManager {
   }
 
   async getAvailableProviders(): Promise<{ provider: AIProvider; available: boolean; models?: string[] }[]> {
-    const results = [];
-    
-    // Verifica Ollama
-    const ollamaAvailable = await checkOllama();
-    results.push({
-      provider: 'ollama' as AIProvider,
-      available: ollamaAvailable,
-      models: ollamaAvailable ? ['llama3', 'llama2', 'codellama'] : []
-    });
-
-    // Verifica APIs externas
     try {
-      const { data } = await supabase.functions.invoke('check-ai-availability');
+      const { data, error } = await supabase.functions.invoke('check-ai-providers');
+      
+      if (error || !data) {
+        console.error('Erro ao verificar providers:', error);
+        return [];
+      }
+
+      const results = [];
       
       results.push({
-        provider: 'openai' as AIProvider,
-        available: !!data?.openai,
-        models: data?.openai ? ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo'] : []
+        provider: 'ollama' as AIProvider,
+        available: !!data.ollama,
+        models: data.models?.ollama || []
       });
 
       results.push({
-        provider: 'claude' as AIProvider,
-        available: !!data?.claude,
-        models: data?.claude ? ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'] : []
+        provider: 'openai' as AIProvider,
+        available: !!data.openai,
+        models: data.models?.openai || ['gpt-4o-mini', 'gpt-4o', 'gpt-5-mini-2025-08-07']
       });
-    } catch (error) {
-      console.error('Erro ao verificar APIs:', error);
-    }
 
-    return results;
+      return results;
+    } catch (error) {
+      console.error('Erro ao verificar providers:', error);
+      return [];
+    }
   }
 }
 
