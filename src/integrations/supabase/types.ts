@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_data_lake_expertise: {
+        Row: {
+          confidence_level: number | null
+          created_at: string
+          document_count: number | null
+          expertise_area: string
+          id: string
+          keywords: string[] | null
+          knowledge_summary: string
+          last_training: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string
+          document_count?: number | null
+          expertise_area: string
+          id?: string
+          keywords?: string[] | null
+          knowledge_summary: string
+          last_training?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string
+          document_count?: number | null
+          expertise_area?: string
+          id?: string
+          keywords?: string[] | null
+          knowledge_summary?: string
+          last_training?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_specialist_conversations: {
+        Row: {
+          context_data: Json | null
+          conversation_type: string
+          created_at: string
+          id: string
+          messages: Json | null
+          specialist_insights: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          conversation_type: string
+          created_at?: string
+          id?: string
+          messages?: Json | null
+          specialist_insights?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          conversation_type?: string
+          created_at?: string
+          id?: string
+          messages?: Json | null
+          specialist_insights?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       document_knowledge: {
         Row: {
           confidence_score: number | null
