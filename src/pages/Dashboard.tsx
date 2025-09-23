@@ -3,14 +3,12 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listDocuments } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
 import { checkOllama } from "@/lib/ollama";
 import { Link } from "react-router-dom";
-import { FileText, Zap, TrendingUp, Clock, Plus, Sparkles, Activity, Brain } from "lucide-react";
+import { FileText, Zap, TrendingUp, Clock, Plus, Sparkles, Activity } from "lucide-react";
 import OllamaAssistant from "@/components/ollama/OllamaAssistant";
-import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -57,26 +55,7 @@ const Dashboard = () => {
 
         {/* AI Assistant */}
         <section className="max-w-4xl mx-auto">
-          <Tabs defaultValue="ollama" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="ollama" className="flex items-center gap-2">
-                <Activity className="h-4 w-4" />
-                Ollama Local
-              </TabsTrigger>
-              <TabsTrigger value="specialist" className="flex items-center gap-2">
-                <Brain className="h-4 w-4" />
-                Especialista Data Lake
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="ollama">
-              <OllamaAssistant />
-            </TabsContent>
-            
-            <TabsContent value="specialist">
-              <AISpecialistPanel />
-            </TabsContent>
-          </Tabs>
+          <OllamaAssistant />
         </section>
 
         {/* Document Types */}

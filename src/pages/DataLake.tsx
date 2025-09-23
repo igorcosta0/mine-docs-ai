@@ -2,21 +2,26 @@ import { useEffect, useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseUser, listLakeItems, type LakeItem } from "@/lib/datalake";
-import { Database, Upload, FileText, Sparkles } from "lucide-react";
+import { Database, Upload, FileText, Sparkles, Brain, Activity } from "lucide-react";
 import UploadForm from "@/components/datalake/UploadForm";
 import ItemsTable from "@/components/datalake/ItemsTable";
 import { DocumentProcessor } from "@/components/datalake/DocumentProcessor";
+import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
+import { checkOllama } from "@/lib/ollama";
 
 const DataLake = () => {
   const { toast } = useToast();
   const [supaUserId, setSupaUserId] = useState<string | null>(null);
   const [items, setItems] = useState<LakeItem[]>([]);
+  const [ollamaOk, setOllamaOk] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = "Data Lake — MinerDocs";
     refresh();
+    checkOllama().then(setOllamaOk);
   }, []);
 
   async function refresh() {
@@ -56,6 +61,10 @@ const DataLake = () => {
                 <FileText className="h-4 w-4 mr-2" />
                 {items.length} documentos
               </Badge>
+              <Badge variant={ollamaOk ? "default" : "secondary"} className="px-4 py-2">
+                <Activity className="h-4 w-4 mr-2" />
+                IA: {ollamaOk ? "Disponível" : "Offline"}
+              </Badge>
             </div>
           </div>
         </section>
@@ -79,28 +88,64 @@ const DataLake = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-5 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <UploadForm 
-                onSuccess={refresh} 
-                canUpload={!!supaUserId} 
-              />
-              
-              {supaUserId && items.length > 0 && (
-                <DocumentProcessor 
-                  documents={items}
-                  onProcessComplete={refresh}
-                />
-              )}
-            </div>
+          <Tabs defaultValue="management" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="management" className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Gerenciamento
+              </TabsTrigger>
+              <TabsTrigger value="ai-specialist" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                IA Especialista
+              </TabsTrigger>
+            </TabsList>
             
-            <div className="lg:col-span-3">
-              <ItemsTable 
-                items={items} 
-                onRefresh={refresh} 
-              />
-            </div>
-          </div>
+            <TabsContent value="management" className="space-y-6">
+              <div className="grid lg:grid-cols-5 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  <UploadForm 
+                    onSuccess={refresh} 
+                    canUpload={!!supaUserId} 
+                  />
+                  
+                  {supaUserId && items.length > 0 && (
+                    <DocumentProcessor 
+                      documents={items}
+                      onProcessComplete={refresh}
+                    />
+                  )}
+                </div>
+                
+                <div className="lg:col-span-3">
+                  <ItemsTable 
+                    items={items} 
+                    onRefresh={refresh} 
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="ai-specialist">
+              {supaUserId ? (
+                <AISpecialistPanel />
+              ) : (
+                <Card className="max-w-2xl mx-auto border-amber-200 bg-amber-50/50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-amber-800">
+                      <Brain className="h-5 w-5" />
+                      Especialista IA Indisponível
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-amber-700">
+                      Para usar o Especialista IA em Data Lake, é necessário estar autenticado.
+                      Faça login para acessar análises avançadas e consultas especializadas.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </AppLayout>
