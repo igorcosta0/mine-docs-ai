@@ -75,27 +75,60 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
 
       console.log('Conhecimento encontrado:', relevantKnowledge.length, 'itens');
 
+      // Mapear campos específicos do tipo de documento
+      const getAvailableFields = () => {
+        const baseFields = ['titulo', 'descricao', 'normas'];
+        if (documentType === 'memorial') {
+          return [...baseFields, 'metodologia', 'justificativas', 'escopo'];
+        } else if (documentType === 'especificacao') {
+          return [...baseFields, 'requisitos', 'tolerancias'];
+        } else if (documentType === 'folha-dados') {
+          return [...baseFields, 'material', 'dimensoes', 'capacidade'];
+        }
+        return baseFields;
+      };
+
+      const availableFields = getAvailableFields();
+      const filledFields = availableFields.filter(field => formData[field] && formData[field].trim());
+      const emptyFields = availableFields.filter(field => !formData[field] || !formData[field].trim());
+
       // Criar contexto específico baseado no tipo de documento
       const specificContext = topKnowledge => {
         if (documentType === 'memorial') {
           return `\nCONTEXTO PARA MEMORIAL DESCRITIVO:
-Metodologias típicas: análise de requisitos, dimensionamento, seleção de equipamentos, verificação de normas
-Justificativas técnicas: critérios de projeto, alternativas consideradas, premissas adotadas
-Escopo típico: fornecimento, instalação, comissionamento, interfaces
+CAMPOS DISPONÍVEIS: ${availableFields.join(', ')}
+CAMPOS PREENCHIDOS: ${filledFields.join(', ')} 
+CAMPOS VAZIOS: ${emptyFields.join(', ')}
+
+ORIENTAÇÕES TÉCNICAS:
+- Metodologia: procedimentos, etapas, sequências, premissas técnicas
+- Justificativas: critérios de projeto, alternativas avaliadas, bases de cálculo
+- Escopo: delimitação clara do fornecimento, interfaces, exclusões
 
 ${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
 ${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
         } else if (documentType === 'especificacao') {
           return `\nCONTEXTO PARA ESPECIFICAÇÃO TÉCNICA:
-Requisitos típicos: desempenho, materiais, segurança, ambientais
-Critérios de aceitação: testes, inspeções, certificações
+CAMPOS DISPONÍVEIS: ${availableFields.join(', ')}
+CAMPOS PREENCHIDOS: ${filledFields.join(', ')}
+CAMPOS VAZIOS: ${emptyFields.join(', ')}
+
+ORIENTAÇÕES TÉCNICAS:
+- Requisitos: critérios mensuráveis, normas aplicáveis
+- Tolerâncias: limites aceitáveis, métodos de medição
 
 ${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
 ${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
         } else if (documentType === 'folha-dados') {
           return `\nCONTEXTO PARA FOLHA DE DADOS:
-Especificações típicas: dimensões, capacidades, materiais, potências
-Parâmetros operacionais: temperaturas, pressões, vazões
+CAMPOS DISPONÍVEIS: ${availableFields.join(', ')}
+CAMPOS PREENCHIDOS: ${filledFields.join(', ')}
+CAMPOS VAZIOS: ${emptyFields.join(', ')}
+
+ORIENTAÇÕES TÉCNICAS:
+- Material: especificação completa, normas
+- Dimensões: medidas principais, tolerâncias
+- Capacidade: valores nominais, condições operacionais
 
 ${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
 ${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
@@ -113,53 +146,63 @@ DOCUMENTO ATUAL:
 - Título: "${formData.titulo || '[vazio]'}"
 - Descrição: "${formData.descricao || '[vazio]'}"
 - Normas: "${formData.normas || '[vazio]'}"
-- Campos técnicos: ${JSON.stringify(formData)}${specificContext(topKnowledge)}
+${docConfig.technical.map(field => `- ${field.label}: "${formData[field.name] || '[vazio]'}"`).join('\n')}${specificContext(topKnowledge)}
 
-TAREFA: Gere 3-4 sugestões PRÁTICAS e ESPECÍFICAS para melhorar o documento.
+TAREFA: Gere 2-3 sugestões PRÁTICAS e ESPECÍFICAS para os campos mais relevantes.
 
-REGRAS:
-1. Use conhecimento específico quando disponível (alta confiança)
-2. Para campos vazios, sugira conteúdo técnico apropriado (média confiança)
-3. Para melhorias, seja específico e técnico (confiança variável)
-4. Foque em padronização e completude técnica
+PRIORIDADE DE SUGESTÕES:
+1. Campos vazios mais importantes (metodologia, justificativas, escopo para memorial)
+2. Melhoria de campos preenchidos
+3. Padronização e normas técnicas
 
-FORMATO OBRIGATÓRIO (use exatamente):
+FORMATO OBRIGATÓRIO - use EXATAMENTE este padrão:
 SUGESTAO_INICIO
-CAMPO: [titulo/descricao/normas/metodologia/justificativas/escopo]
-TEXTO: [sugestão específica e técnica - mínimo 50 caracteres]
-CONFIANCA: [alta/media/baixa]
-TIPO: [completar/melhorar/padronizar]
+CAMPO: [${availableFields.join('|')}]
+TEXTO: [sugestão específica com terminologia técnica - mínimo 80 caracteres]
+CONFIANCA: [alta|media|baixa]
+TIPO: [completar|melhorar|padronizar]
+SUGESTAO_FIM
+
+EXEMPLOS VÁLIDOS:
+SUGESTAO_INICIO
+CAMPO: metodologia
+TEXTO: Detalhe a sequência de cálculos estruturais conforme NBR 8800, incluindo verificação de estabilidade global e local, análise de fadiga para estruturas sujeitas a carregamentos cíclicos e dimensionamento das ligações soldadas e parafusadas.
+CONFIANCA: alta
+TIPO: completar
 SUGESTAO_FIM
 
 IMPORTANTE: 
-- Para memorial: foque em metodologia, justificativas técnicas e escopo
-- Use terminologia técnica específica
-- Seja objetivo e prático
-- Baseie-se no conhecimento disponível quando possível`;
+- Foque APENAS nos campos do formulário atual
+- Use terminologia técnica específica da engenharia industrial
+- Seja objetivo e evite generalidades
+- Priorize campos vazios relevantes ao documento`;
 
       console.log('Enviando prompt para Ollama...', prompt.substring(0, 200));
       const response = await generateWithOllama('llama3', prompt);
       console.log('Resposta do Ollama:', response.substring(0, 300));
       
-      // Parser melhorado das sugestões
+      // Parser robusto que aceita múltiplos formatos
+      let parsedSuggestions: AISuggestion[] = [];
+      
+      // Primeiro, tenta o formato estruturado
       const suggestionMatches = response.match(/SUGESTAO_INICIO([\s\S]*?)SUGESTAO_FIM/g);
       
       if (suggestionMatches && suggestionMatches.length > 0) {
-        console.log('Encontradas', suggestionMatches.length, 'sugestões');
+        console.log('Encontradas', suggestionMatches.length, 'sugestões no formato estruturado');
         
-        const parsedSuggestions: AISuggestion[] = suggestionMatches.map((match, index) => {
+        parsedSuggestions = suggestionMatches.map((match, index) => {
           try {
             const content = match.replace(/SUGESTAO_INICIO|SUGESTAO_FIM/g, '').trim();
             const lines = content.split('\n').map(l => l.trim()).filter(l => l);
             
             let field = '';
             let suggestion = '';
-            let confidence: 'high' | 'medium' | 'low' = 'low';
+            let confidence: 'high' | 'medium' | 'low' = 'medium';
             let type: 'improvement' | 'completion' | 'correction' = 'improvement';
             
             for (const line of lines) {
               if (line.startsWith('CAMPO:')) {
-                field = line.replace('CAMPO:', '').trim();
+                field = line.replace('CAMPO:', '').trim().toLowerCase();
               } else if (line.startsWith('TEXTO:')) {
                 suggestion = line.replace('TEXTO:', '').trim();
               } else if (line.startsWith('CONFIANCA:')) {
@@ -175,24 +218,99 @@ IMPORTANTE:
               }
             }
             
-            if (field && suggestion && suggestion.length > 10) {
-              console.log(`Sugestão ${index + 1}:`, { field, suggestion: suggestion.substring(0, 50), confidence, type });
+            // Validar se o campo existe nos campos disponíveis
+            if (field && suggestion && suggestion.length > 20 && availableFields.includes(field)) {
+              console.log(`Sugestão estruturada ${index + 1}:`, { field, suggestion: suggestion.substring(0, 50), confidence, type });
               return { field, suggestion, confidence, type };
             }
             
             return null;
           } catch (error) {
-            console.error('Erro ao processar sugestão:', error);
+            console.error('Erro ao processar sugestão estruturada:', error);
             return null;
           }
         }).filter(s => s !== null) as AISuggestion[];
-        
-        console.log('Sugestões processadas:', parsedSuggestions.length);
-        setSuggestions(parsedSuggestions);
       } else {
-        console.log('Nenhuma sugestão encontrada no formato esperado');
+        // Fallback: parser para formato alternativo (**SUGESTÃO N**)
+        console.log('Tentando formato alternativo de sugestões...');
+        
+        const alternativeMatches = response.match(/\*\*SUGESTÃO \d+\*\*([\s\S]*?)(?=\*\*SUGESTÃO \d+\*\*|$)/g);
+        
+        if (alternativeMatches) {
+          console.log('Encontradas', alternativeMatches.length, 'sugestões no formato alternativo');
+          
+          parsedSuggestions = alternativeMatches.map((match, index) => {
+            try {
+              const lines = match.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('**SUGESTÃO'));
+              
+              let field = '';
+              let suggestion = '';
+              let confidence: 'high' | 'medium' | 'low' = 'medium';
+              let type: 'improvement' | 'completion' | 'correction' = 'improvement';
+              
+              for (const line of lines) {
+                if (line.toLowerCase().includes('campo:') || line.toLowerCase().includes('field:')) {
+                  const fieldMatch = line.match(/campo:\s*([^,\n]*)/i) || line.match(/field:\s*([^,\n]*)/i);
+                  if (fieldMatch) {
+                    field = fieldMatch[1].trim().toLowerCase();
+                  }
+                } else if (line.toLowerCase().includes('texto:') || line.toLowerCase().includes('text:')) {
+                  const textMatch = line.match(/texto:\s*(.*)/i) || line.match(/text:\s*(.*)/i);
+                  if (textMatch) {
+                    suggestion = textMatch[1].trim();
+                  }
+                } else if (line.toLowerCase().includes('confianca:') || line.toLowerCase().includes('confidence:')) {
+                  if (line.toLowerCase().includes('alta') || line.toLowerCase().includes('high')) confidence = 'high';
+                  else if (line.toLowerCase().includes('baixa') || line.toLowerCase().includes('low')) confidence = 'low';
+                } else if (line.toLowerCase().includes('tipo:') || line.toLowerCase().includes('type:')) {
+                  if (line.toLowerCase().includes('completar') || line.toLowerCase().includes('completion')) type = 'completion';
+                  else if (line.toLowerCase().includes('padronizar') || line.toLowerCase().includes('correction')) type = 'correction';
+                }
+                
+                // Se não encontrou campo/texto estruturado, tenta extrair do texto livre
+                if (!field || !suggestion) {
+                  const fieldKeywords = ['título', 'title', 'descrição', 'description', 'normas', 'standards', 'metodologia', 'methodology', 'justificativas', 'justifications', 'escopo', 'scope'];
+                  
+                  for (const keyword of fieldKeywords) {
+                    if (line.toLowerCase().includes(keyword.toLowerCase()) && suggestion.length < 10) {
+                      field = keyword.toLowerCase().replace('título', 'titulo').replace('descrição', 'descricao');
+                      suggestion = line.length > 50 ? line : suggestion;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              // Se ainda não encontrou, usa toda a sugestão como texto
+              if (!suggestion && lines.length > 0) {
+                suggestion = lines.join(' ').replace(/campo:|texto:|confianca:|tipo:/gi, '').trim();
+                if (!field && suggestion.toLowerCase().includes('metodologia')) field = 'metodologia';
+                else if (!field && suggestion.toLowerCase().includes('justificativa')) field = 'justificativas';
+                else if (!field && suggestion.toLowerCase().includes('escopo')) field = 'escopo';
+                else if (!field && suggestion.toLowerCase().includes('norma')) field = 'normas';
+                else if (!field) field = emptyFields[index] || availableFields[index] || 'descricao';
+              }
+              
+              if (field && suggestion && suggestion.length > 20 && availableFields.includes(field)) {
+                console.log(`Sugestão alternativa ${index + 1}:`, { field, suggestion: suggestion.substring(0, 50), confidence, type });
+                return { field, suggestion, confidence, type };
+              }
+              
+              return null;
+            } catch (error) {
+              console.error('Erro ao processar sugestão alternativa:', error);
+              return null;
+            }
+          }).filter(s => s !== null) as AISuggestion[];
+        }
+      }
+      
+      console.log('Sugestões processadas:', parsedSuggestions.length);
+      setSuggestions(parsedSuggestions);
+      
+      if (parsedSuggestions.length === 0) {
+        console.log('Nenhuma sugestão encontrada em nenhum formato');
         console.log('Resposta completa:', response);
-        setSuggestions([]);
       }
     } catch (error) {
       console.error('Erro ao gerar sugestões:', error);
