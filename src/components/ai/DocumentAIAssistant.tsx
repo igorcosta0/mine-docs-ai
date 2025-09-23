@@ -60,148 +60,143 @@ export const DocumentAIAssistant: React.FC<DocumentAIAssistantProps> = ({
     
     setLoading(true);
     try {
+      console.log('Gerando sugestões para:', documentType, formData);
+      
       // Buscar conhecimento específico com base no título atual
       const titleWords = formData.titulo?.toLowerCase().split(' ').filter(w => w.length > 2) || [];
+      const descWords = formData.descricao?.toLowerCase().split(' ').filter(w => w.length > 2) || [];
+      const allKeywords = [...titleWords, ...descWords].slice(0, 8);
+      
       const relevantKnowledge = await getUserKnowledge(
         documentType,
         undefined,
-        titleWords.length > 0 ? titleWords : undefined
+        allKeywords.length > 0 ? allKeywords : undefined
       );
 
-      // Calcular correspondência para determinar confiança
-      const calculateConfidence = (knowledge: DocumentKnowledge): 'high' | 'medium' | 'low' => {
-        if (!formData.titulo) return 'low';
-        
-        const titleLower = formData.titulo.toLowerCase();
-        const knowledgeTitle = knowledge.title.toLowerCase();
-        const knowledgeKeywords = knowledge.keywords.map(k => k.toLowerCase());
-        
-        // Alta confiança: correspondência exata de título ou palavras-chave
-        if (knowledgeTitle.includes(titleLower) || 
-            titleWords.some(word => knowledgeKeywords.includes(word)) ||
-            knowledge.confidence_score >= 0.9) {
-          return 'high';
+      console.log('Conhecimento encontrado:', relevantKnowledge.length, 'itens');
+
+      // Criar contexto específico baseado no tipo de documento
+      const specificContext = topKnowledge => {
+        if (documentType === 'memorial') {
+          return `\nCONTEXTO PARA MEMORIAL DESCRITIVO:
+Metodologias típicas: análise de requisitos, dimensionamento, seleção de equipamentos, verificação de normas
+Justificativas técnicas: critérios de projeto, alternativas consideradas, premissas adotadas
+Escopo típico: fornecimento, instalação, comissionamento, interfaces
+
+${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
+${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
+        } else if (documentType === 'especificacao') {
+          return `\nCONTEXTO PARA ESPECIFICAÇÃO TÉCNICA:
+Requisitos típicos: desempenho, materiais, segurança, ambientais
+Critérios de aceitação: testes, inspeções, certificações
+
+${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
+${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
+        } else if (documentType === 'folha-dados') {
+          return `\nCONTEXTO PARA FOLHA DE DADOS:
+Especificações típicas: dimensões, capacidades, materiais, potências
+Parâmetros operacionais: temperaturas, pressões, vazões
+
+${topKnowledge.length > 0 ? `CONHECIMENTO ESPECÍFICO (${topKnowledge.length} itens):
+${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 150)}`).join('\n')}` : 'Nenhum conhecimento específico encontrado.'}`;
         }
-        
-        // Média confiança: correspondência parcial
-        if (titleWords.some(word => knowledgeTitle.includes(word)) ||
-            knowledge.confidence_score >= 0.7) {
-          return 'medium';
-        }
-        
-        return 'low';
+        return '';
       };
 
-      // Focar no conhecimento mais relevante e ordenar por confiança
-      const topKnowledge = relevantKnowledge
-        .slice(0, 5)
-        .sort((a, b) => calculateConfidence(b) === 'high' ? 1 : -1);
+      // Focar no conhecimento mais relevante
+      const topKnowledge = relevantKnowledge.slice(0, 5);
 
-      const knowledgeContext = topKnowledge.length > 0 
-        ? `\nCONHECIMENTO ESPECÍFICO APLICÁVEL (${topKnowledge.length} itens):
-${topKnowledge.map((k, i) => `${i+1}. ${k.title}: ${k.content.substring(0, 200)}`).join('\n')}`
-        : '';
+      const prompt = `Você é um assistente especializado em ${docConfig.label} para engenharia industrial.
 
-      const prompt = `Assistente especializado para ${docConfig.label} com análise inteligente de contexto. 
+DOCUMENTO ATUAL:
+- Tipo: ${documentType}
+- Título: "${formData.titulo || '[vazio]'}"
+- Descrição: "${formData.descricao || '[vazio]'}"
+- Normas: "${formData.normas || '[vazio]'}"
+- Campos técnicos: ${JSON.stringify(formData)}${specificContext(topKnowledge)}
 
-DADOS ATUAIS DO DOCUMENTO:
-Título: "${formData.titulo || '[vazio]'}"
-Descrição: "${formData.descricao || '[vazio]'}"
-Normas: "${formData.normas || '[vazio]'}"${knowledgeContext}
+TAREFA: Gere 3-4 sugestões PRÁTICAS e ESPECÍFICAS para melhorar o documento.
 
-ALGORITMO DE SUGESTÕES INTELIGENTES:
-1. Para ALTA confiança: use conhecimento específico com correspondência exata
-2. Para MÉDIA confiança: use conhecimento com correspondência parcial ou interpretação
-3. Para BAIXA confiança: use apenas quando necessário completar campo essencial
+REGRAS:
+1. Use conhecimento específico quando disponível (alta confiança)
+2. Para campos vazios, sugira conteúdo técnico apropriado (média confiança)
+3. Para melhorias, seja específico e técnico (confiança variável)
+4. Foque em padronização e completude técnica
 
-REGRAS ESPECÍFICAS:
-- Analise o título e identifique padrões técnicos no conhecimento disponível
-- Para descrições, use especificações técnicas específicas do conhecimento
-- Para normas, referencie normas específicas encontradas no conhecimento técnico
-- Priorize informações numéricas, modelos, fabricantes, especificações
+FORMATO OBRIGATÓRIO (use exatamente):
+SUGESTAO_INICIO
+CAMPO: [titulo/descricao/normas/metodologia/justificativas/escopo]
+TEXTO: [sugestão específica e técnica - mínimo 50 caracteres]
+CONFIANCA: [alta/media/baixa]
+TIPO: [completar/melhorar/padronizar]
+SUGESTAO_FIM
 
-CAMPOS PARA SUGERIR:
-- título: melhorar precisão técnica e nomenclatura padrão
-- descricao: completar com especificações técnicas detalhadas
-- normas: adicionar normas técnicas específicas aplicáveis
+IMPORTANTE: 
+- Para memorial: foque em metodologia, justificativas técnicas e escopo
+- Use terminologia técnica específica
+- Seja objetivo e prático
+- Baseie-se no conhecimento disponível quando possível`;
 
-FORNEÇA 2-4 SUGESTÕES TÉCNICAS ESPECÍFICAS:
-
-Formato exato:
-CAMPO: [título/descricao/normas]
-SUGESTÃO: [texto específico baseado no conhecimento técnico do Data Lake]
-CONFIANÇA: [alta/média/baixa]
-TIPO: [melhoria/completar/padronizar]
-FONTE: [conhecimento_específico/interpretação_técnica/sugestão_padrão]
-
-FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, completar especificações técnicas.`;
-
+      console.log('Enviando prompt para Ollama...', prompt.substring(0, 200));
       const response = await generateWithOllama('llama3', prompt);
+      console.log('Resposta do Ollama:', response.substring(0, 300));
       
-      // Parser das sugestões com análise avançada
-      const suggestionMatches = response.match(/CAMPO: (.+?)\nSUGESTÃO: (.+?)\nCONFIANÇA: (.+?)\nTIPO: (.+?)(?:\nFONTE: (.+?))?(?=\n|$)/g);
+      // Parser melhorado das sugestões
+      const suggestionMatches = response.match(/SUGESTAO_INICIO([\s\S]*?)SUGESTAO_FIM/g);
       
-      if (suggestionMatches) {
-        const parsedSuggestions: AISuggestion[] = suggestionMatches.map(match => {
-          const lines = match.split('\n');
-          const field = lines[0].replace('CAMPO: ', '').trim();
-          const suggestion = lines[1].replace('SUGESTÃO: ', '').trim();
-          let confidenceText = lines[2].replace('CONFIANÇA: ', '').trim().toLowerCase();
-          const type = lines[3].replace('TIPO: ', '').trim().toLowerCase() as 'improvement' | 'completion' | 'correction';
-          const fonte = lines[4] ? lines[4].replace('FONTE: ', '').trim() : '';
-          
-          // Converter confiança do português para inglês
-          let confidence: 'high' | 'medium' | 'low' = 'low';
-          if (confidenceText === 'alta' || confidenceText === 'high') confidence = 'high';
-          else if (confidenceText === 'média' || confidenceText === 'medium') confidence = 'medium';
-          else confidence = 'low';
-          
-          // Algoritmo inteligente de ajuste de confiança
-          let confidenceScore = 0;
-          
-          // Pontuação base por confiança declarada
-          if (confidence === 'high') confidenceScore = 80;
-          else if (confidence === 'medium') confidenceScore = 60;
-          else confidenceScore = 40;
-          
-          // Bonificação por conhecimento específico disponível
-          if (topKnowledge.length > 0) {
-            const hasDirectMatch = topKnowledge.some(k => 
-              k.title.toLowerCase().includes(field.toLowerCase()) ||
-              k.keywords.some(kw => suggestion.toLowerCase().includes(kw.toLowerCase()))
-            );
+      if (suggestionMatches && suggestionMatches.length > 0) {
+        console.log('Encontradas', suggestionMatches.length, 'sugestões');
+        
+        const parsedSuggestions: AISuggestion[] = suggestionMatches.map((match, index) => {
+          try {
+            const content = match.replace(/SUGESTAO_INICIO|SUGESTAO_FIM/g, '').trim();
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l);
             
-            const hasContentMatch = topKnowledge.some(k => 
-              suggestion.toLowerCase().includes(k.content.toLowerCase().substring(0, 100))
-            );
+            let field = '';
+            let suggestion = '';
+            let confidence: 'high' | 'medium' | 'low' = 'low';
+            let type: 'improvement' | 'completion' | 'correction' = 'improvement';
             
-            if (hasDirectMatch) confidenceScore += 20;
-            if (hasContentMatch) confidenceScore += 15;
-            if (fonte === 'conhecimento_específico') confidenceScore += 10;
+            for (const line of lines) {
+              if (line.startsWith('CAMPO:')) {
+                field = line.replace('CAMPO:', '').trim();
+              } else if (line.startsWith('TEXTO:')) {
+                suggestion = line.replace('TEXTO:', '').trim();
+              } else if (line.startsWith('CONFIANCA:')) {
+                const confidenceText = line.replace('CONFIANCA:', '').trim().toLowerCase();
+                if (confidenceText === 'alta' || confidenceText === 'high') confidence = 'high';
+                else if (confidenceText === 'media' || confidenceText === 'média' || confidenceText === 'medium') confidence = 'medium';
+                else confidence = 'low';
+              } else if (line.startsWith('TIPO:')) {
+                const typeText = line.replace('TIPO:', '').trim().toLowerCase();
+                if (typeText === 'completar' || typeText === 'completion') type = 'completion';
+                else if (typeText === 'melhorar' || typeText === 'improvement') type = 'improvement';
+                else if (typeText === 'padronizar' || typeText === 'correction') type = 'correction';
+              }
+            }
+            
+            if (field && suggestion && suggestion.length > 10) {
+              console.log(`Sugestão ${index + 1}:`, { field, suggestion: suggestion.substring(0, 50), confidence, type });
+              return { field, suggestion, confidence, type };
+            }
+            
+            return null;
+          } catch (error) {
+            console.error('Erro ao processar sugestão:', error);
+            return null;
           }
-          
-          // Bonificação por qualidade da sugestão
-          if (suggestion.length > 100) confidenceScore += 10;
-          if (/\b(norma|especificação|técnico|padrão)\b/i.test(suggestion)) confidenceScore += 10;
-          
-          // Redefinir confiança baseada na pontuação final
-          if (confidenceScore >= 90) confidence = 'high';
-          else if (confidenceScore >= 70) confidence = 'medium';
-          else confidence = 'low';
-          
-          return { field, suggestion, confidence, type };
-        });
+        }).filter(s => s !== null) as AISuggestion[];
         
-        // Ordenar por confiança e relevância
-        const sortedSuggestions = parsedSuggestions.sort((a, b) => {
-          const confidenceOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-          return confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
-        });
-        
-        setSuggestions(sortedSuggestions);
+        console.log('Sugestões processadas:', parsedSuggestions.length);
+        setSuggestions(parsedSuggestions);
+      } else {
+        console.log('Nenhuma sugestão encontrada no formato esperado');
+        console.log('Resposta completa:', response);
+        setSuggestions([]);
       }
     } catch (error) {
       console.error('Erro ao gerar sugestões:', error);
+      setSuggestions([]);
     } finally {
       setLoading(false);
     }
@@ -213,6 +208,8 @@ FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, c
     
     setChatLoading(true);
     try {
+      console.log('Processando pergunta do chat:', chatMessage);
+      
       // Buscar conhecimento específico para a pergunta de forma mais inteligente
       const queryWords = chatMessage.toLowerCase()
         .split(' ')
@@ -231,6 +228,8 @@ FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, c
         allKeywords
       );
 
+      console.log('Conhecimento para chat:', relevantKnowledge.length, 'itens');
+
       // Priorizar conhecimento mais relevante para a pergunta
       const specificKnowledge = relevantKnowledge.filter(k => 
         queryWords.some(word => 
@@ -242,32 +241,53 @@ FOQUE EM: aplicar conhecimento técnico específico, padronizar nomenclaturas, c
 
       const knowledgeToUse = specificKnowledge.length > 0 ? specificKnowledge : relevantKnowledge;
 
+      // Contexto específico baseado no tipo de documento
+      const specificPromptContext = documentType === 'memorial' 
+        ? `\nESPECÍFICO PARA MEMORIAL DESCRITIVO:
+- Metodologia: explique procedimentos, etapas, sequências de trabalho
+- Justificativas técnicas: fundamente decisões com critérios objetivos
+- Escopo: delimite claramente fornecimentos, interfaces e responsabilidades
+- Use linguagem técnica apropriada para engenharia industrial`
+        : documentType === 'especificacao'
+        ? `\nESPECÍFICO PARA ESPECIFICAÇÃO TÉCNICA:
+- Requisitos: defina critérios mensuráveis e verificáveis
+- Tolerâncias: especifique limites aceitáveis
+- Critérios de aceitação: estabeleça métodos de verificação`
+        : `\nESPECÍFICO PARA FOLHA DE DADOS:
+- Parâmetros técnicos: forneça valores numéricos precisos
+- Especificações: detalhe características físicas e operacionais`;
+
       const specificContext = knowledgeToUse.length > 0 
         ? `\n\nCONHECIMENTO ESPECÍFICO DO SEU DATA LAKE (${knowledgeToUse.length} itens relevantes):
 ${knowledgeToUse.slice(0, 3).map((k, i) => 
-  `${i+1}. ${k.title}: ${k.content.substring(0, 300)}`
+  `${i+1}. ${k.title}: ${k.content.substring(0, 200)}`
 ).join('\n\n')}`
         : '\n\n[Nenhum conhecimento específico encontrado no Data Lake para esta pergunta]';
 
-      const prompt = `Especialista em ${docConfig.label}. 
-Documento atual: "${formData.titulo || 'Sem título'}"
-Tipo: ${documentType}
+      const prompt = `Especialista em ${docConfig.label} para engenharia industrial.
+Documento atual: "${formData.titulo || 'Sem título'}" (Tipo: ${documentType})${specificPromptContext}
 
-PERGUNTA ESPECÍFICA: "${chatMessage}"${specificContext}
+PERGUNTA: "${chatMessage}"${specificContext}
 
 INSTRUÇÕES:
-- Use APENAS o conhecimento específico do Data Lake do usuário
-- Seja TÉCNICO e ESPECÍFICO, não genérico
-- Se há conhecimento relevante, dê uma resposta detalhada baseada nele
-- Se não há conhecimento específico, seja honesto e sugira que o usuário adicione mais documentos ao Data Lake
-- Referencie especificamente os itens de conhecimento que está usando
+1. Use APENAS o conhecimento específico do Data Lake quando disponível
+2. Seja TÉCNICO, ESPECÍFICO e PRÁTICO - evite respostas genéricas
+3. Para memorial descritivo: foque em metodologia, justificativas e escopo
+4. Se há conhecimento relevante, dê resposta detalhada baseada nele
+5. Se não há conhecimento específico, seja honesto e sugira adicionar mais documentos
+6. Referencie especificamente os itens de conhecimento utilizados
+7. Use terminologia técnica apropriada para engenharia industrial
 
-Resposta técnica específica:`;
+Resposta técnica especializada:`;
 
+      console.log('Enviando prompt do chat para Ollama...');
       const response = await generateWithOllama('llama3', prompt);
+      console.log('Resposta do chat recebida:', response.substring(0, 100));
+      
       setChatResponse(response);
       setChatMessage('');
     } catch (error) {
+      console.error('Erro no chat:', error);
       setChatResponse('Erro ao processar sua pergunta. Verifique se o Ollama está funcionando.');
     } finally {
       setChatLoading(false);
@@ -410,7 +430,10 @@ Resposta técnica específica:`;
                         'titulo': 'titulo', 
                         'descrição': 'descricao',
                         'descricao': 'descricao',
-                        'normas': 'normas'
+                        'normas': 'normas',
+                        'metodologia': 'metodologia',
+                        'justificativas': 'justificativas',
+                        'escopo': 'escopo'
                       };
                       const mappedField = fieldMapping[suggestion.field.toLowerCase()] || suggestion.field.toLowerCase();
                       onSuggestionApply(mappedField, suggestion.suggestion);
