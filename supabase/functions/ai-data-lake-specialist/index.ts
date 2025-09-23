@@ -26,18 +26,18 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { action, data } = await req.json();
+    const { action, data, useOllama } = await req.json();
     console.log(`AI Data Lake Specialist - Action: ${action}, User: ${user.id}`);
 
     switch (action) {
       case 'analyze_data_lake':
-        return await analyzeDataLake(supabase, user.id);
+        return await analyzeDataLake(supabase, user.id, useOllama);
       
       case 'generate_expertise':
-        return await generateExpertise(supabase, user.id, data);
+        return await generateExpertise(supabase, user.id, data, useOllama);
       
       case 'consult_specialist':
-        return await consultSpecialist(supabase, user.id, data);
+        return await consultSpecialist(supabase, user.id, data, useOllama);
       
       case 'get_specialized_context':
         return await getSpecializedContext(supabase, user.id, data);
@@ -58,7 +58,58 @@ serve(async (req) => {
   }
 });
 
-async function analyzeDataLake(supabase: any, userId: string) {
+async function callAI(prompt: string, systemPrompt?: string, useOllama = false): Promise<string> {
+  // Tentar Ollama primeiro se solicitado
+  if (useOllama) {
+    try {
+      const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'llama3',
+          prompt: `${systemPrompt || 'Você é um especialista em análise de dados técnicos e documentação.'}\n\n${prompt}`,
+          stream: false,
+        }),
+      });
+
+      if (ollamaResponse.ok) {
+        const ollamaData = await ollamaResponse.json();
+        console.log('Using Ollama (offline mode)');
+        return ollamaData.response || '';
+      }
+    } catch (error) {
+      console.log('Ollama não disponível, usando OpenAI:', error.message);
+    }
+  }
+
+  // Fallback para OpenAI
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openAIApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt || 'Você é um especialista em análise de dados técnicos e documentação.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log('Using OpenAI (online mode)');
+  return data.choices[0].message.content;
+}
+
+async function analyzeDataLake(supabase: any, userId: string, useOllama = false) {
   console.log('Analyzing Data Lake for user:', userId);
   
   // Buscar todos os documentos do Data Lake do usuário
@@ -129,22 +180,7 @@ FORMATO DE RESPOSTA (JSON):
 
 Análise TÉCNICA e ESPECÍFICA baseada nos dados reais fornecidos:`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1,
-      max_tokens: 2000,
-    }),
-  });
-
-  const aiResponse = await response.json();
-  const analysis = aiResponse.choices[0].message.content;
+  const analysis = await callAI(prompt, undefined, useOllama);
 
   console.log('Data Lake Analysis completed');
 
@@ -162,7 +198,7 @@ Análise TÉCNICA e ESPECÍFICA baseada nos dados reais fornecidos:`;
   });
 }
 
-async function generateExpertise(supabase: any, userId: string, data: any) {
+async function generateExpertise(supabase: any, userId: string, data: any, useOllama = false) {
   console.log('Generating specialized expertise for user:', userId);
   
   const { expertise_area, documents_focus } = data;
@@ -241,22 +277,7 @@ FORMATO DE RESPOSTA ESPECIALIZADA (JSON):
 
 Gere uma especialização TÉCNICA e PROFUNDA na área de ${expertise_area}:`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      max_tokens: 2500,
-    }),
-  });
-
-  const aiResponse = await response.json();
-  const expertiseData = aiResponse.choices[0].message.content;
+  const expertiseData = await callAI(prompt, undefined, useOllama);
 
   // Salvar expertise no banco
   const { data: savedExpertise, error: saveError } = await supabase
@@ -293,7 +314,7 @@ Gere uma especialização TÉCNICA e PROFUNDA na área de ${expertise_area}:`;
   });
 }
 
-async function consultSpecialist(supabase: any, userId: string, data: any) {
+async function consultSpecialist(supabase: any, userId: string, data: any, useOllama = false) {
   console.log('Consulting AI specialist for user:', userId);
   
   const { question, context, document_type } = data;
@@ -378,22 +399,7 @@ FORMATO DE RESPOSTA:
 
 Forneça uma consulta especializada TÉCNICA e PRECISA:`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.1,
-      max_tokens: 2000,
-    }),
-  });
-
-  const aiResponse = await response.json();
-  const consultation = aiResponse.choices[0].message.content;
+  const consultation = await callAI(prompt, undefined, useOllama);
 
   // Salvar conversa
   const { data: savedConversation, error: saveError } = await supabase

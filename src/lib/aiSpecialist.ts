@@ -49,9 +49,9 @@ export interface SpecialistConsultation {
 }
 
 export class AIDataLakeSpecialist {
-  private async callSpecialistFunction(action: string, data?: any) {
+  private async callSpecialistFunction(action: string, data?: any, useOllama = false) {
     const { data: result, error } = await supabase.functions.invoke('ai-data-lake-specialist', {
-      body: { action, data }
+      body: { action, data, useOllama }
     });
 
     if (error) {
@@ -62,7 +62,7 @@ export class AIDataLakeSpecialist {
     return result;
   }
 
-  async analyzeDataLake(): Promise<{
+  async analyzeDataLake(useOllama = false): Promise<{
     analysis: DataLakeAnalysis;
     data_lake_stats: {
       total_documents: number;
@@ -75,7 +75,7 @@ export class AIDataLakeSpecialist {
     console.log('Analyzing Data Lake with AI Specialist...');
     
     try {
-      const result = await this.callSpecialistFunction('analyze_data_lake');
+      const result = await this.callSpecialistFunction('analyze_data_lake', undefined, useOllama);
       
       // Parse da análise se vier como string
       let analysis;
@@ -109,7 +109,7 @@ export class AIDataLakeSpecialist {
     }
   }
 
-  async generateExpertise(expertiseArea: string, documentsFocus?: string[]): Promise<{
+  async generateExpertise(expertiseArea: string, documentsFocus?: string[], useOllama = false): Promise<{
     expertise: AIExpertise;
     analysis: string;
     source_documents: number;
@@ -121,7 +121,7 @@ export class AIDataLakeSpecialist {
       return await this.callSpecialistFunction('generate_expertise', {
         expertise_area: expertiseArea,
         documents_focus: documentsFocus
-      });
+      }, useOllama);
     } catch (error) {
       console.error('Error generating expertise:', error);
       throw error;
@@ -134,7 +134,8 @@ export class AIDataLakeSpecialist {
       technical_area?: string; 
       document_type?: string; 
       additional_info?: any 
-    }
+    },
+    useOllama = false
   ): Promise<{
     consultation: SpecialistConsultation;
     conversation_id: string;
@@ -148,7 +149,7 @@ export class AIDataLakeSpecialist {
         question,
         context,
         document_type: context?.document_type
-      });
+      }, useOllama);
 
       // Parse da consulta se vier como string
       let consultation;

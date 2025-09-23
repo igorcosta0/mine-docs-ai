@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -18,7 +20,9 @@ import {
   CheckCircle,
   Loader2,
   BarChart3,
-  Zap
+  Zap,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { aiSpecialist, type DataLakeAnalysis, type AIExpertise, type SpecialistConsultation } from '@/lib/aiSpecialist';
@@ -31,6 +35,7 @@ export const AISpecialistPanel: React.FC = () => {
   const [consultationQuestion, setConsultationQuestion] = useState('');
   const [consultationResult, setConsultationResult] = useState<SpecialistConsultation | null>(null);
   const [consultationLoading, setConsultationLoading] = useState(false);
+  const [useOllama, setUseOllama] = useState(false);
 
   // Carregar dados iniciais
   useEffect(() => {
@@ -49,7 +54,7 @@ export const AISpecialistPanel: React.FC = () => {
   const handleAnalyzeDataLake = async () => {
     setLoading(true);
     try {
-      const result = await aiSpecialist.analyzeDataLake();
+      const result = await aiSpecialist.analyzeDataLake(useOllama);
       setAnalysis(result.analysis);
       setDataLakeStats(result.data_lake_stats);
       toast.success('Análise do Data Lake concluída!');
@@ -64,7 +69,7 @@ export const AISpecialistPanel: React.FC = () => {
   const handleGenerateExpertise = async (area: string) => {
     setLoading(true);
     try {
-      await aiSpecialist.generateExpertise(area);
+      await aiSpecialist.generateExpertise(area, undefined, useOllama);
       await loadExistingExpertise();
       toast.success(`Expertise em ${area} gerada com sucesso!`);
     } catch (error) {
@@ -80,7 +85,7 @@ export const AISpecialistPanel: React.FC = () => {
     
     setConsultationLoading(true);
     try {
-      const result = await aiSpecialist.consultSpecialist(consultationQuestion);
+      const result = await aiSpecialist.consultSpecialist(consultationQuestion, undefined, useOllama);
       setConsultationResult(result.consultation);
       toast.success('Consulta ao especialista concluída!');
     } catch (error) {
@@ -118,10 +123,31 @@ export const AISpecialistPanel: React.FC = () => {
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
             Especialista IA em Data Lake
+            {useOllama ? (
+              <Badge variant="secondary" className="ml-2 flex items-center gap-1">
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </Badge>
+            ) : (
+              <Badge variant="default" className="ml-2 flex items-center gap-1">
+                <Wifi className="h-3 w-3" />
+                Online
+              </Badge>
+            )}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             IA especializada dedicada exclusivamente ao seu Data Lake para análises mais precisas e contextualizadas.
           </p>
+          <div className="flex items-center space-x-2 pt-2">
+            <Switch
+              id="ollama-mode"
+              checked={useOllama}
+              onCheckedChange={setUseOllama}
+            />
+            <Label htmlFor="ollama-mode">
+              Modo Offline (Ollama)
+            </Label>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
