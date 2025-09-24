@@ -10,6 +10,7 @@ import UploadForm from "@/components/datalake/UploadForm";
 import ItemsTable from "@/components/datalake/ItemsTable";
 
 import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
+import { DataLakeAIAssistant } from "@/components/ai/DataLakeAIAssistant";
 import { checkOllama } from "@/lib/ollama";
 
 const DataLake = () => {
@@ -120,18 +121,18 @@ const DataLake = () => {
             
             <TabsContent value="ai-specialist">
               {supaUserId ? (
-                <AISpecialistPanel documents={items} onRefresh={refresh} />
+                <DataLakeAIAssistant documents={items} onRefresh={refresh} />
               ) : (
                 <Card className="max-w-2xl mx-auto border-amber-200 bg-amber-50/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-amber-800">
                       <Brain className="h-5 w-5" />
-                      Especialista IA Indisponível
+                      Assistente IA Indisponível
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-amber-700">
-                      Para usar o Especialista IA em Data Lake, é necessário estar autenticado.
+                      Para usar o Assistente IA do Data Lake, é necessário estar autenticado.
                       Faça login para acessar análises avançadas e consultas especializadas.
                     </p>
                   </CardContent>
