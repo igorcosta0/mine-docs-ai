@@ -8,7 +8,7 @@ import { getSupabaseUser, listLakeItems, type LakeItem } from "@/lib/datalake";
 import { Database, Upload, FileText, Sparkles, Brain, Activity } from "lucide-react";
 import UploadForm from "@/components/datalake/UploadForm";
 import ItemsTable from "@/components/datalake/ItemsTable";
-import { DocumentProcessor } from "@/components/datalake/DocumentProcessor";
+
 import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
 import { checkOllama } from "@/lib/ollama";
 
@@ -107,13 +107,6 @@ const DataLake = () => {
                     onSuccess={refresh} 
                     canUpload={!!supaUserId} 
                   />
-                  
-                  {supaUserId && items.length > 0 && (
-                    <DocumentProcessor 
-                      documents={items}
-                      onProcessComplete={refresh}
-                    />
-                  )}
                 </div>
                 
                 <div className="lg:col-span-3">
@@ -127,7 +120,7 @@ const DataLake = () => {
             
             <TabsContent value="ai-specialist">
               {supaUserId ? (
-                <AISpecialistPanel />
+                <AISpecialistPanel documents={items} onRefresh={refresh} />
               ) : (
                 <Card className="max-w-2xl mx-auto border-amber-200 bg-amber-50/50">
                   <CardHeader>

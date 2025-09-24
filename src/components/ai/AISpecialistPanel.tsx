@@ -22,12 +22,20 @@ import {
   BarChart3,
   Zap,
   Wifi,
-  WifiOff
+  WifiOff,
+  Cog
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { aiSpecialist, type DataLakeAnalysis, type AIExpertise, type SpecialistConsultation } from '@/lib/aiSpecialist';
+import { DocumentProcessor } from '@/components/datalake/DocumentProcessor';
+import { type LakeItem } from '@/lib/datalake';
 
-export const AISpecialistPanel: React.FC = () => {
+interface AISpecialistPanelProps {
+  documents: LakeItem[];
+  onRefresh?: () => void;
+}
+
+export const AISpecialistPanel: React.FC<AISpecialistPanelProps> = ({ documents, onRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<DataLakeAnalysis | null>(null);
   const [dataLakeStats, setDataLakeStats] = useState<any>(null);
@@ -163,13 +171,35 @@ export const AISpecialistPanel: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="analysis" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="preparation" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="preparation">Preparação</TabsTrigger>
           <TabsTrigger value="analysis">Análise</TabsTrigger>
           <TabsTrigger value="expertise">Expertise</TabsTrigger>
           <TabsTrigger value="consultation">Consulta</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
+
+        {/* Preparação - Processamento de Conhecimento */}
+        <TabsContent value="preparation" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Cog className="h-5 w-5" />
+                Preparação do Data Lake
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Primeira etapa: extrair conhecimento dos documentos para análises posteriores
+              </p>
+            </CardHeader>
+            <CardContent>
+              <DocumentProcessor 
+                documents={documents}
+                onProcessComplete={onRefresh}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Análise do Data Lake */}
         <TabsContent value="analysis" className="space-y-4">
