@@ -338,7 +338,6 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
 
           <Button 
             type="submit" 
-            variant="hero" 
             disabled={!isValidUpload || loading || processing}
             className="w-full"
             size="lg"
