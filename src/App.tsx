@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import NewDocument from "./pages/NewDocument";
 import DocumentViewer from "./pages/DocumentViewer";
 import DataLake from "./pages/DataLake";
+import AgentDemo from "./pages/AgentDemo";
 import { requireAuth } from "@/lib/auth";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/new/:type" element={<ProtectedRoute><NewDocument /></ProtectedRoute>} />
           <Route path="/doc/:id" element={<ProtectedRoute><DocumentViewer /></ProtectedRoute>} />
           <Route path="/datalake" element={<ProtectedRoute><DataLake /></ProtectedRoute>} />
+          <Route path="/agent-demo" element={<ProtectedRoute><AgentDemo /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
