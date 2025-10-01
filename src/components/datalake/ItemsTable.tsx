@@ -5,11 +5,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { deleteLakeItem, type LakeItem } from "@/lib/datalake";
-import { FileText, Trash2, Search, Filter } from "lucide-react";
+import { FileText, Trash2, Search, AlertTriangle } from "lucide-react";
 import DocumentViewer from "./DocumentViewer";
 import DocumentTypeChanger from "./DocumentTypeChanger";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ItemsTableProps {
   items: LakeItem[];
@@ -20,6 +31,7 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("todos");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (item: LakeItem) => {
     const confirmed = window.confirm(
@@ -38,6 +50,38 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
     }
     
     toast({ title: "Item removido com sucesso" });
+    onRefresh();
+  };
+
+  const handleDeleteAll = async () => {
+    setIsDeleting(true);
+    let deleted = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      const { ok } = await deleteLakeItem(item);
+      if (ok) {
+        deleted++;
+      } else {
+        failed++;
+      }
+    }
+
+    setIsDeleting(false);
+    
+    if (failed === 0) {
+      toast({ 
+        title: "Todos os documentos foram removidos", 
+        description: `${deleted} documentos deletados com sucesso` 
+      });
+    } else {
+      toast({ 
+        title: "Exclusão concluída com erros", 
+        description: `${deleted} deletados, ${failed} falharam`,
+        variant: "destructive" 
+      });
+    }
+    
     onRefresh();
   };
 
@@ -255,15 +299,56 @@ const ItemsTable = ({ items, onRefresh }: ItemsTableProps) => {
   return (
     <Card className="shadow-sm border-2">
       <CardHeader className="pb-4">
-        <CardTitle className="flex items-center gap-3 text-xl">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <FileText className="h-6 w-6 text-primary" />
-          </div>
-          Documentos no Data Lake
-          <Badge variant="secondary" className="ml-auto">
-            {items.length} documentos
-          </Badge>
-        </CardTitle>
+        <div className="flex items-center justify-between mb-4">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <FileText className="h-6 w-6 text-primary" />
+            </div>
+            Documentos no Data Lake
+            <Badge variant="secondary">
+              {items.length} documentos
+            </Badge>
+          </CardTitle>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                disabled={isDeleting || items.length === 0}
+                className="gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? "Excluindo..." : "Excluir todos"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Confirmar exclusão em massa
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p className="font-semibold">
+                    Você está prestes a deletar {items.length} documentos permanentemente.
+                  </p>
+                  <p>
+                    Esta ação não pode ser desfeita. Todos os arquivos e seus metadados serão removidos do Data Lake.
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDeleteAll}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Sim, excluir todos
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
         
         {/* Busca */}
         <div className="relative group">
