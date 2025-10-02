@@ -14,6 +14,7 @@ import { DuplicateAction, DuplicateCheckResult, performDuplicateCheck } from "@/
 import { Upload, Brain, FileText, FolderUp, Zap, CheckCircle2, XCircle, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
+import { eventBus } from "@/lib/eventBus";
 
 // Limite de 50MB por arquivo (limite do Supabase Storage)
 const MAX_FILE_SIZE_MB = 50;
@@ -375,6 +376,16 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
         description,
       });
       
+      // Emitir evento para o Agente IA
+      if (uploadStats.success > 0) {
+        eventBus.emit('DL_ITEM_UPLOADED', {
+          itemId: crypto.randomUUID(),
+          title: `${uploadStats.success} documentos`,
+          type: 'massa',
+          count: uploadStats.success
+        });
+      }
+      
       onSuccess();
       
     } catch (error) {
@@ -463,6 +474,14 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       toast({ 
         title: "Upload concluído", 
         description: `${files.length} arquivo(s) enviado(s) com sucesso.` 
+      });
+      
+      // Emitir evento para o Agente IA
+      eventBus.emit('DL_ITEM_UPLOADED', {
+        itemId: crypto.randomUUID(),
+        title: files.length === 1 ? files[0].name : `${files.length} documentos`,
+        type: docType || 'documento',
+        count: files.length
       });
       
       resetForm();

@@ -1,6 +1,7 @@
 import React from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AgentDock } from "@/components/ai/AgentDock";
 import { Menu } from "lucide-react";
 
 interface AppLayoutProps {
@@ -30,6 +31,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             {children}
           </main>
         </div>
+        
+        {/* Agente IA Flutuante - Acessível de qualquer página */}
+        <AgentDock />
       </div>
     </SidebarProvider>
   );
