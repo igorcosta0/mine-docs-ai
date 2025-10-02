@@ -14,6 +14,10 @@ import { DuplicateAction, DuplicateCheckResult, performDuplicateCheck } from "@/
 import { Upload, Brain, FileText, FolderUp, Zap, CheckCircle2, XCircle, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+// Limite de 50MB por arquivo (limite do Supabase Storage)
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 interface UploadFormProps {
   onSuccess: () => void;
   canUpload: boolean;
@@ -304,12 +308,38 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.pdf'));
-    setFiles(selectedFiles);
+    const allFiles = Array.from(e.target.files || []).filter(f => f.name.toLowerCase().endsWith('.pdf'));
     
-    // Upload em massa automático se tiver mais de 5 arquivos
-    if (selectedFiles.length > 5 && autoMode) {
-      await handleBulkUpload(selectedFiles);
+    // Separar arquivos válidos e rejeitados por tamanho
+    const validFiles: File[] = [];
+    const oversizedFiles: File[] = [];
+    
+    allFiles.forEach(file => {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        oversizedFiles.push(file);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    // Notificar sobre arquivos rejeitados
+    if (oversizedFiles.length > 0) {
+      const fileList = oversizedFiles.map(f => 
+        `${f.name} (${(f.size / (1024 * 1024)).toFixed(1)}MB)`
+      ).join(', ');
+      
+      toast({
+        title: "Arquivos muito grandes",
+        description: `${oversizedFiles.length} arquivo(s) excede(m) o limite de ${MAX_FILE_SIZE_MB}MB: ${fileList}`,
+        variant: "destructive",
+      });
+    }
+    
+    setFiles(validFiles);
+    
+    // Upload em massa automático se tiver mais de 5 arquivos válidos
+    if (validFiles.length > 5 && autoMode) {
+      await handleBulkUpload(validFiles);
     }
   };
 
@@ -413,7 +443,12 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Upload do arquivo */}
           <div className="space-y-3">
-            <Label>Selecionar Arquivos *</Label>
+            <div className="space-y-1">
+              <Label>Selecionar Arquivos *</Label>
+              <p className="text-xs text-muted-foreground">
+                Limite máximo: {MAX_FILE_SIZE_MB}MB por arquivo
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Button
                 type="button"
