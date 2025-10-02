@@ -5,6 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
+
+const authSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email({ message: "E-mail inválido" })
+    .max(255, { message: "E-mail muito longo" }),
+  password: z
+    .string()
+    .min(6, { message: "Senha deve ter no mínimo 6 caracteres" })
+    .max(72, { message: "Senha muito longa" })
+});
 
 const AuthCard = ({ onSuccess }: { onSuccess: () => void }) => {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -16,7 +29,12 @@ const AuthCard = ({ onSuccess }: { onSuccess: () => void }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (!email || !password) throw new Error("Informe e-mail e senha");
+      const validation = authSchema.safeParse({ email, password });
+      
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        throw new Error(firstError.message);
+      }
       
       const redirectUrl = `${window.location.origin}/app`;
       
