@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { uploadLakeFile, uploadLakeFileWithDuplicateCheck, replaceLakeItem, type UploadLakeFileOptions } from "@/lib/datalake";
 import { processDocumentAutomatically } from "@/lib/pdfProcessor";
 import { DuplicateAlert } from "./DuplicateAlert";
-import { DuplicateAction, DuplicateCheckResult } from "@/lib/duplicateDetection";
-import { Upload, Brain, FileText, FolderUp, Zap, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { DuplicateAction, DuplicateCheckResult, performDuplicateCheck } from "@/lib/duplicateDetection";
+import { Upload, Brain, FileText, FolderUp, Zap, CheckCircle2, XCircle, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface UploadFormProps {
   onSuccess: () => void;
@@ -41,9 +42,14 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     current: 0,
     success: 0,
     failed: 0,
+    skipped: 0,
     currentFile: "",
     startTime: 0,
   });
+  
+  // Rastreamento de erros e duplicatas
+  const [failedUploads, setFailedUploads] = useState<Array<{ fileName: string; error: string }>>([]);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
   
   // Apenas campos essenciais
   const [docType, setDocType] = useState("");
@@ -68,9 +74,12 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       current: 0,
       success: 0,
       failed: 0,
+      skipped: 0,
       currentFile: "",
       startTime: 0,
     });
+    setFailedUploads([]);
+    setShowErrorDetails(false);
     // Reset estados de duplicata
     setShowDuplicateAlert(false);
     setPendingFile(null);
@@ -203,28 +212,55 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
           results.success++;
           setUploadStats(prev => ({ ...prev, success: prev.success + 1 }));
         } else {
+          const errorMsg = result.error || "Erro desconhecido";
           results.failed++;
           setUploadStats(prev => ({ ...prev, failed: prev.failed + 1 }));
+          setFailedUploads(prev => [...prev, { fileName: file.name, error: errorMsg }]);
         }
-      } catch (error) {
+      } catch (error: any) {
+        const errorMsg = error?.message || "Erro ao processar arquivo";
         results.failed++;
         setUploadStats(prev => ({ ...prev, failed: prev.failed + 1 }));
+        setFailedUploads(prev => [...prev, { fileName: file.name, error: errorMsg }]);
       }
     }
     
     return results;
   };
 
-  const handleBulkUpload = async (files: File[]) => {
+  const handleBulkUpload = async (filesToUpload: File[]) => {
     setProcessing(true);
+    setFailedUploads([]);
     const BATCH_SIZE = 10;
-    const batches = Math.ceil(files.length / BATCH_SIZE);
+    
+    // Verificar duplicatas antes de processar
+    const uniqueFiles: File[] = [];
+    let skippedCount = 0;
+    
+    toast({
+      title: "Verificando duplicatas...",
+      description: "Analisando arquivos antes do upload",
+    });
+    
+    for (const file of filesToUpload) {
+      const { result, error } = await performDuplicateCheck(file);
+      
+      if (!error && result?.hasExactDuplicate) {
+        // Pular arquivo duplicado
+        skippedCount++;
+      } else {
+        uniqueFiles.push(file);
+      }
+    }
+    
+    const batches = Math.ceil(uniqueFiles.length / BATCH_SIZE);
     
     setUploadStats({
-      total: files.length,
+      total: uniqueFiles.length,
       current: 0,
       success: 0,
       failed: 0,
+      skipped: skippedCount,
       currentFile: "",
       startTime: Date.now(),
     });
@@ -232,8 +268,8 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     try {
       for (let i = 0; i < batches; i++) {
         const start = i * BATCH_SIZE;
-        const end = Math.min(start + BATCH_SIZE, files.length);
-        const batch = files.slice(start, end);
+        const end = Math.min(start + BATCH_SIZE, uniqueFiles.length);
+        const batch = uniqueFiles.slice(start, end);
         
         await processBatch(batch, i, batches);
         
@@ -245,12 +281,15 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       
       const elapsed = ((Date.now() - uploadStats.startTime) / 1000).toFixed(0);
       
+      const description = skippedCount > 0 
+        ? `✅ ${uploadStats.success} sucesso | ❌ ${uploadStats.failed} falhas | 🔄 ${skippedCount} duplicados pulados | ⏱️ ${elapsed}s`
+        : `✅ ${uploadStats.success} sucesso | ❌ ${uploadStats.failed} falhas | ⏱️ ${elapsed}s`;
+      
       toast({
         title: "Upload em massa concluído",
-        description: `✅ ${uploadStats.success} sucesso | ❌ ${uploadStats.failed} falhas | ⏱️ ${elapsed}s`,
+        description,
       });
       
-      resetForm();
       onSuccess();
       
     } catch (error) {
@@ -451,7 +490,7 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-4 gap-3 text-center">
                 <div className="space-y-1">
                   <div className="flex items-center justify-center gap-1">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -468,6 +507,13 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-center gap-1">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm font-medium">{uploadStats.skipped}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Duplicados</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-center gap-1">
                     <Clock className="h-4 w-4 text-blue-500" />
                     <span className="text-sm font-medium">{estimatedTimeLeft}s</span>
                   </div>
@@ -480,6 +526,31 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
                   <Brain className="h-4 w-4 text-primary" />
                   <span className="truncate">{uploadStats.currentFile}</span>
                 </div>
+              )}
+              
+              {/* Lista de erros detalhados */}
+              {failedUploads.length > 0 && (
+                <Collapsible open={showErrorDetails} onOpenChange={setShowErrorDetails}>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted rounded-lg transition-colors">
+                    <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Ver detalhes das falhas ({failedUploads.length})</span>
+                    </div>
+                    {showErrorDetails ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                    {failedUploads.map((failed, index) => (
+                      <div key={index} className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                        <p className="text-sm font-medium truncate">{failed.fileName}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{failed.error}</p>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </div>
           )}
