@@ -13,6 +13,7 @@ import { DuplicateAlert } from "./DuplicateAlert";
 import { DuplicateAction, DuplicateCheckResult, performDuplicateCheck } from "@/lib/duplicateDetection";
 import { Upload, Brain, FileText, FolderUp, Zap, CheckCircle2, XCircle, Clock, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
 
 // Limite de 50MB por arquivo (limite do Supabase Storage)
 const MAX_FILE_SIZE_MB = 50;
@@ -167,11 +168,15 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     }
   };
 
-  const processBatch = async (batch: File[], batchIndex: number, totalBatches: number) => {
+  const processBatchWithHashes = async (
+    batch: Array<{ file: File; hash: string }>, 
+    batchIndex: number, 
+    totalBatches: number
+  ) => {
     const results = { success: 0, failed: 0 };
     
     for (let i = 0; i < batch.length; i++) {
-      const file = batch[i];
+      const { file, hash } = batch[i];
       const globalIndex = batchIndex * 10 + i;
       
       setUploadStats(prev => ({
@@ -209,8 +214,8 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
           };
         }
 
-        // Upload direto sem verificação de duplicata em lote (para velocidade)
-        const result = await uploadLakeFile(file, options);
+        // Upload usando o hash já calculado
+        const result = await uploadLakeFileWithHash(file, options, hash);
         
         if (result.ok) {
           results.success++;
@@ -231,14 +236,56 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     
     return results;
   };
+  
+  // Função auxiliar para upload direto com hash pré-calculado
+  const uploadLakeFileWithHash = async (
+    file: File,
+    opts: UploadLakeFileOptions,
+    fileHash: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    if (!user) return { ok: false, error: "Faça login no Supabase para enviar arquivos." };
+
+    const ext = file.name.split(".").pop() || "bin";
+    const fileId = crypto.randomUUID();
+    const path = `${user.id}/${fileId}.${ext}`;
+
+    const { error: upErr } = await supabase.storage.from("datalake").upload(path, file, {
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+    if (upErr) return { ok: false, error: upErr.message };
+
+    const { error: insErr } = await supabase.from("lake_items").insert({
+      user_id: user.id,
+      file_path: path,
+      title: opts.title || file.name,
+      tags: opts.tags ?? [],
+      doc_type: opts.docType ?? null,
+      equipment_model: opts.equipmentModel ?? null,
+      manufacturer: opts.manufacturer ?? null,
+      year: opts.year ?? null,
+      norm_source: opts.normSource ?? null,
+      description: opts.description ?? null,
+      serial_number: opts.serialNumber ?? null,
+      plant_unit: opts.plantUnit ?? null,
+      system_area: opts.systemArea ?? null,
+      revision_version: opts.revisionVersion ?? null,
+      checksum_sha256: fileHash,
+    });
+    if (insErr) return { ok: false, error: insErr.message };
+    
+    return { ok: true };
+  };
 
   const handleBulkUpload = async (filesToUpload: File[]) => {
     setProcessing(true);
     setFailedUploads([]);
     const BATCH_SIZE = 10;
     
-    // Verificar duplicatas antes de processar
-    const uniqueFiles: File[] = [];
+    // Mapear arquivos com seus hashes calculados
+    const filesWithHashes: Array<{ file: File; hash: string }> = [];
     let skippedCount = 0;
     
     toast({
@@ -246,15 +293,30 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       description: `Analisando ${filesToUpload.length} arquivo(s) antes do upload`,
     });
     
+    // Calcular hashes e verificar duplicatas
     for (const file of filesToUpload) {
-      const { result, error } = await performDuplicateCheck(file);
-      
-      if (!error && result?.hasExactDuplicate) {
-        // Pular arquivo duplicado automaticamente
-        skippedCount++;
-        console.log(`📋 Duplicata detectada e pulada: ${file.name}`);
-      } else {
-        uniqueFiles.push(file);
+      try {
+        const { result, error } = await performDuplicateCheck(file);
+        
+        if (error) {
+          console.warn(`⚠️ Erro ao verificar ${file.name}:`, error);
+          // Em caso de erro, adicionar mesmo assim (melhor subir que perder)
+          filesWithHashes.push({ file, hash: result?.fileHash || '' });
+          continue;
+        }
+        
+        if (result?.hasExactDuplicate) {
+          // Pular arquivo duplicado automaticamente
+          skippedCount++;
+          console.log(`📋 Duplicata detectada: ${file.name} (hash: ${result.fileHash.substring(0, 8)}...)`);
+        } else {
+          console.log(`✅ Arquivo novo: ${file.name} (hash: ${result.fileHash.substring(0, 8)}...)`);
+          filesWithHashes.push({ file, hash: result.fileHash });
+        }
+      } catch (err) {
+        console.error(`❌ Erro ao processar ${file.name}:`, err);
+        // Em caso de erro, tentar adicionar mesmo assim
+        filesWithHashes.push({ file, hash: '' });
       }
     }
     
@@ -266,10 +328,19 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       });
     }
     
-    const batches = Math.ceil(uniqueFiles.length / BATCH_SIZE);
+    if (filesWithHashes.length === 0) {
+      toast({
+        title: "Nenhum arquivo novo",
+        description: "Todos os arquivos já existem no Data Lake",
+      });
+      setProcessing(false);
+      return;
+    }
+    
+    const batches = Math.ceil(filesWithHashes.length / BATCH_SIZE);
     
     setUploadStats({
-      total: uniqueFiles.length,
+      total: filesWithHashes.length,
       current: 0,
       success: 0,
       failed: 0,
@@ -281,10 +352,10 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     try {
       for (let i = 0; i < batches; i++) {
         const start = i * BATCH_SIZE;
-        const end = Math.min(start + BATCH_SIZE, uniqueFiles.length);
-        const batch = uniqueFiles.slice(start, end);
+        const end = Math.min(start + BATCH_SIZE, filesWithHashes.length);
+        const batch = filesWithHashes.slice(start, end);
         
-        await processBatch(batch, i, batches);
+        await processBatchWithHashes(batch, i, batches);
         
         // Pequeno delay entre batches para não sobrecarregar
         if (i < batches - 1) {
