@@ -243,18 +243,27 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
     
     toast({
       title: "Verificando duplicatas...",
-      description: "Analisando arquivos antes do upload",
+      description: `Analisando ${filesToUpload.length} arquivo(s) antes do upload`,
     });
     
     for (const file of filesToUpload) {
       const { result, error } = await performDuplicateCheck(file);
       
       if (!error && result?.hasExactDuplicate) {
-        // Pular arquivo duplicado
+        // Pular arquivo duplicado automaticamente
         skippedCount++;
+        console.log(`📋 Duplicata detectada e pulada: ${file.name}`);
       } else {
         uniqueFiles.push(file);
       }
+    }
+    
+    // Informar sobre duplicatas puladas
+    if (skippedCount > 0) {
+      toast({
+        title: "Duplicatas detectadas",
+        description: `${skippedCount} documento(s) duplicado(s) foram automaticamente pulados`,
+      });
     }
     
     const batches = Math.ceil(uniqueFiles.length / BATCH_SIZE);
@@ -285,9 +294,10 @@ const UploadForm = ({ onSuccess, canUpload }: UploadFormProps) => {
       
       const elapsed = ((Date.now() - uploadStats.startTime) / 1000).toFixed(0);
       
-      const description = skippedCount > 0 
-        ? `✅ ${uploadStats.success} sucesso | ❌ ${uploadStats.failed} falhas | 🔄 ${skippedCount} duplicados pulados | ⏱️ ${elapsed}s`
-        : `✅ ${uploadStats.success} sucesso | ❌ ${uploadStats.failed} falhas | ⏱️ ${elapsed}s`;
+      let description = `✅ ${uploadStats.success} novo(s) enviado(s)`;
+      if (uploadStats.failed > 0) description += ` | ❌ ${uploadStats.failed} erro(s)`;
+      if (skippedCount > 0) description += ` | 🔄 ${skippedCount} duplicado(s) pulado(s)`;
+      description += ` | ⏱️ ${elapsed}s`;
       
       toast({
         title: "Upload em massa concluído",
