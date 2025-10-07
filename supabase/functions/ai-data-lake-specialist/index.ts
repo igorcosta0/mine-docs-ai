@@ -82,7 +82,7 @@ async function callAI(prompt: string, systemPrompt?: string, useOllama = false):
     }
   }
 
-  // Fallback para OpenAI
+  // Fallback para OpenAI (usando modelo mais rápido)
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -92,11 +92,11 @@ async function callAI(prompt: string, systemPrompt?: string, useOllama = false):
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: systemPrompt || 'Você é um especialista em análise de dados técnicos e documentação.' },
+        { role: 'system', content: systemPrompt || 'Você é um especialista em análise de dados técnicos. Seja conciso e objetivo.' },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
-      max_tokens: 2000,
+      temperature: 0.5,
+      max_tokens: 1500,
     }),
   });
 
@@ -130,55 +130,38 @@ async function analyzeDataLake(supabase: any, userId: string, useOllama = false)
 
   if (knowledgeError) throw knowledgeError;
 
-  // Análise com IA especializada
-  const prompt = `Você é um ESPECIALISTA EM ANÁLISE DE DATA LAKE TÉCNICO.
+  // Análise otimizada com resumo dos dados
+  const docTypes = [...new Set(lakeItems.map(i => i.doc_type).filter(Boolean))];
+  const manufacturers = [...new Set(lakeItems.map(i => i.manufacturer).filter(Boolean))];
+  const technicalAreas = [...new Set(knowledge.map(k => k.technical_area).filter(Boolean))];
+  
+  // Limitar dados para prompt mais rápido
+  const topKnowledge = knowledge.slice(0, 30);
+  
+  const prompt = `Análise RÁPIDA de Data Lake Técnico:
 
-DADOS DO DATA LAKE:
-- ${lakeItems.length} documentos totais
-- Tipos de documentos: ${[...new Set(lakeItems.map(i => i.doc_type).filter(Boolean))].join(', ')}
-- Fabricantes identificados: ${[...new Set(lakeItems.map(i => i.manufacturer).filter(Boolean))].join(', ')}
-- Equipamentos: ${[...new Set(lakeItems.map(i => i.equipment_model).filter(Boolean))].join(', ')}
+RESUMO:
+- ${lakeItems.length} docs | ${knowledge.length} conhecimentos
+- Tipos: ${docTypes.slice(0, 5).join(', ')}
+- Fabricantes: ${manufacturers.slice(0, 5).join(', ')}
+- Áreas: ${technicalAreas.slice(0, 5).join(', ')}
 
-CONHECIMENTO EXTRAÍDO:
-- ${knowledge.length} itens de conhecimento processados
-- Áreas técnicas cobertas: ${[...new Set(knowledge.map(k => k.technical_area).filter(Boolean))].join(', ')}
-- Níveis de confiança: Alta (${knowledge.filter(k => k.confidence_score >= 0.9).length}), Média (${knowledge.filter(k => k.confidence_score >= 0.7 && k.confidence_score < 0.9).length}), Baixa (${knowledge.filter(k => k.confidence_score < 0.7).length})
+AMOSTRA DE CONHECIMENTO (Top ${topKnowledge.length}):
+${topKnowledge.slice(0, 10).map(k => `- ${k.technical_area}: ${k.title} (${k.confidence_score.toFixed(2)})`).join('\n')}
 
-ANÁLISE ESPECIALIZADA REQUERIDA:
-
-1. MAPEAMENTO DE EXPERTISE: Identifique as ÁREAS DE ESPECIALIZAÇÃO mais fortes do Data Lake
-2. GAPS DE CONHECIMENTO: Identifique lacunas e áreas que precisam de mais documentação
-3. QUALIDADE DO CONHECIMENTO: Avalie a profundidade técnica disponível
-4. RECOMENDAÇÕES ESTRATÉGICAS: Como melhorar o Data Lake para assistência de IA mais eficaz
-
-FORMATO DE RESPOSTA (JSON):
+RESPONDA EM JSON:
 {
-  "expertise_areas": [
-    {
-      "area": "nome_da_area",
-      "strength": "alta/media/baixa",
-      "document_count": numero,
-      "knowledge_quality": "excelente/boa/regular/fraca",
-      "key_topics": ["topico1", "topico2"],
-      "confidence_level": 0.0-1.0
-    }
-  ],
-  "knowledge_gaps": [
-    {
-      "area": "area_carente",
-      "severity": "critica/alta/media/baixa",
-      "recommendation": "acao_sugerida"
-    }
-  ],
+  "expertise_areas": [{"area": "string", "strength": "alta/media/baixa", "document_count": number, "knowledge_quality": "boa/regular", "key_topics": ["topic"], "confidence_level": 0.8}],
+  "knowledge_gaps": [{"area": "string", "severity": "media/baixa", "recommendation": "string"}],
   "overall_assessment": {
-    "readiness_score": 0.0-1.0,
-    "strengths": ["ponto_forte1", "ponto_forte2"],
-    "weaknesses": ["fraqueza1", "fraqueza2"],
-    "strategic_recommendations": ["recomendacao1", "recomendacao2"]
+    "readiness_score": 0.85,
+    "strengths": ["força1", "força2"],
+    "weaknesses": ["fraqueza1"],
+    "strategic_recommendations": ["rec1", "rec2"]
   }
 }
 
-Análise TÉCNICA e ESPECÍFICA baseada nos dados reais fornecidos:`;
+Análise objetiva:`;
 
   const analysis = await callAI(prompt, undefined, useOllama);
 

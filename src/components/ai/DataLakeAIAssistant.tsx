@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { aiSpecialist, type DataLakeAnalysis, type AIExpertise, type SpecialistConsultation } from '@/lib/aiSpecialist';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   processDocumentWithOllama, 
   saveKnowledgeToDatabase, 
@@ -108,6 +109,45 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
     setReadinessScore(documents.length > 0 ? Math.max(20, 100 - (unprocessedDocs.length / documents.length) * 80) : 0);
   };
 
+  const checkAlreadyProcessed = async (documentIds: string[]): Promise<Set<string>> => {
+    try {
+      const { data, error } = await supabase
+        .from('document_knowledge')
+        .select('source_document_id')
+        .in('source_document_id', documentIds);
+      
+      if (error) throw error;
+      return new Set(data?.map(d => d.source_document_id).filter(Boolean) || []);
+    } catch (error) {
+      console.error('Error checking processed documents:', error);
+      return new Set();
+    }
+  };
+
+  const processBatch = async (batch: LakeItem[], batchIndex: number, totalBatches: number) => {
+    const results = await Promise.allSettled(
+      batch.map(async (doc) => {
+        try {
+          const content = await getDocumentContent(doc);
+          const extractedKnowledge = await processDocumentWithOllama(doc, content);
+          
+          if (extractedKnowledge.length > 0) {
+            const result = await saveKnowledgeToDatabase(doc.id, extractedKnowledge);
+            return result.success ? extractedKnowledge.length : 0;
+          }
+          return 0;
+        } catch (error) {
+          console.error(`Erro ao processar ${doc.title}:`, error);
+          return 0;
+        }
+      })
+    );
+
+    return results.reduce((sum, result) => 
+      sum + (result.status === 'fulfilled' ? result.value : 0), 0
+    );
+  };
+
   const handleFullWorkflow = async () => {
     if (documents.length === 0) {
       toast.error("Nenhum documento disponível para processar");
@@ -124,49 +164,85 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
     });
 
     try {
-      // Phase 1: Process documents
-      let totalExtracted = 0;
-      for (let i = 0; i < documents.length; i++) {
-        const doc = documents[i];
+      // Verificar quais documentos já foram processados
+      const alreadyProcessed = await checkAlreadyProcessed(documents.map(d => d.id));
+      const toProcess = documents.filter(d => !alreadyProcessed.has(d.id));
+      
+      if (toProcess.length === 0 && alreadyProcessed.size > 0) {
+        toast.info('Todos os documentos já foram processados. Executando apenas análise...');
+        
         setProcessing(prev => ({
           ...prev,
-          currentDocument: doc.title,
-          processedCount: i
+          phase: 'analyzing',
+          currentDocument: 'Analisando Data Lake...'
         }));
+
+        const analysisResult = await aiSpecialist.analyzeDataLake(useOllama);
+        setAnalysis(analysisResult.analysis);
+        setDataLakeStats(analysisResult.data_lake_stats);
+
+        setProcessing(prev => ({
+          ...prev,
+          phase: 'complete',
+          processedCount: documents.length
+        }));
+
+        await loadExistingExpertise();
+        if (onRefresh) onRefresh();
+
+        toast.success('Análise completa do Data Lake concluída!');
         
-        try {
-          const content = await getDocumentContent(doc);
-          const extractedKnowledge = await processDocumentWithOllama(doc, content);
-          
-          if (extractedKnowledge.length > 0) {
-            const result = await saveKnowledgeToDatabase(doc.id, extractedKnowledge);
-            if (result.success) {
-              totalExtracted += extractedKnowledge.length;
-              setProcessing(prev => ({
-                ...prev,
-                extractedKnowledge: totalExtracted
-              }));
-            }
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error(`Erro ao processar documento ${doc.title}:`, error);
-        }
+        setTimeout(() => {
+          setProcessing(prev => ({ ...prev, isProcessing: false, phase: 'idle' }));
+          setNeedsProcessing(false);
+          setReadinessScore(95);
+        }, 1500);
+        
+        return;
       }
 
-      // Phase 2: Analyze Data Lake
+      // Phase 1: Processar documentos em lotes paralelos
+      const BATCH_SIZE = 5; // Processar 5 documentos simultaneamente
+      const batches = [];
+      for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+        batches.push(toProcess.slice(i, i + BATCH_SIZE));
+      }
+
+      let totalExtracted = 0;
+      
+      toast.info(`Processando ${toProcess.length} documentos novos em ${batches.length} lotes...`);
+
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        
+        setProcessing(prev => ({
+          ...prev,
+          currentDocument: `Lote ${i + 1}/${batches.length} (${batch.length} docs)`,
+          processedCount: i * BATCH_SIZE + alreadyProcessed.size
+        }));
+
+        const extracted = await processBatch(batch, i, batches.length);
+        totalExtracted += extracted;
+
+        setProcessing(prev => ({
+          ...prev,
+          extractedKnowledge: totalExtracted,
+          processedCount: Math.min((i + 1) * BATCH_SIZE + alreadyProcessed.size, documents.length)
+        }));
+      }
+
+      // Phase 2: Análise do Data Lake
       setProcessing(prev => ({
         ...prev,
         phase: 'analyzing',
-        currentDocument: 'Analisando Data Lake...'
+        currentDocument: 'Analisando Data Lake com IA...'
       }));
 
       const analysisResult = await aiSpecialist.analyzeDataLake(useOllama);
       setAnalysis(analysisResult.analysis);
       setDataLakeStats(analysisResult.data_lake_stats);
 
-      // Phase 3: Complete
+      // Phase 3: Concluir
       setProcessing(prev => ({
         ...prev,
         phase: 'complete',
@@ -175,16 +251,17 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
       }));
 
       await loadExistingExpertise();
-      
       if (onRefresh) onRefresh();
 
-      toast.success(`Workflow completo! ${totalExtracted} conhecimentos extraídos e Data Lake analisado.`);
+      toast.success(
+        `✅ Workflow completo! ${totalExtracted} novos conhecimentos + ${alreadyProcessed.size} já existentes`
+      );
       
       setTimeout(() => {
         setProcessing(prev => ({ ...prev, isProcessing: false, phase: 'idle' }));
         setNeedsProcessing(false);
         setReadinessScore(95);
-      }, 2000);
+      }, 1500);
 
     } catch (error) {
       console.error('Error in full workflow:', error);

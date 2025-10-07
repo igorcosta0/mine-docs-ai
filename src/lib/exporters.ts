@@ -54,7 +54,7 @@ export async function exportToPDF(title: string, content: string) {
   });
 
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: "application/pdf" });
+  const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
   triggerDownload(blob, slug(`${title}.pdf`));
 }
 
