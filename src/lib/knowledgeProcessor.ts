@@ -30,7 +30,8 @@ export interface ExtractedKnowledge {
 
 export async function processDocumentWithOllama(
   document: LakeItem, 
-  documentContent: string
+  documentContent: string,
+  model: string = 'llama3'
 ): Promise<ExtractedKnowledge[]> {
   const prompt = `Você é um especialista em extração de conhecimento técnico avançado. Extraia conhecimento ESPECÍFICO e REUTILIZÁVEL:
 
@@ -81,7 +82,7 @@ CONHECIMENTO_END
 Extraia 6-8 conhecimentos ESPECÍFICOS e TÉCNICOS para reutilização.`;
 
   try {
-    const response = await generateWithOllama('llama3', prompt);
+    const response = await generateWithOllama(model, prompt);
     return parseKnowledgeResponse(response);
   } catch (error) {
     console.error('Erro ao processar documento com Ollama:', error);

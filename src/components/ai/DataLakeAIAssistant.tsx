@@ -35,6 +35,8 @@ import {
 import { toast } from 'sonner';
 import { aiSpecialist, type DataLakeAnalysis, type AIExpertise, type SpecialistConsultation } from '@/lib/aiSpecialist';
 import { supabase } from '@/integrations/supabase/client';
+import { ModelSelector } from './ModelSelector';
+import { PerformanceComparison } from './PerformanceComparison';
 import { 
   processDocumentWithOllama, 
   saveKnowledgeToDatabase, 
@@ -59,6 +61,7 @@ interface ProcessingStatus {
 
 export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ documents, onRefresh }) => {
   const [useOllama, setUseOllama] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('llama3');
   
   // Processing state
   const [processing, setProcessing] = useState<ProcessingStatus>({
@@ -129,7 +132,7 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
       batch.map(async (doc) => {
         try {
           const content = await getDocumentContent(doc);
-          const extractedKnowledge = await processDocumentWithOllama(doc, content);
+          const extractedKnowledge = await processDocumentWithOllama(doc, content, selectedModel);
           
           if (extractedKnowledge.length > 0) {
             const result = await saveKnowledgeToDatabase(doc.id, extractedKnowledge);
@@ -329,14 +332,16 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
                 Assistente inteligente para análise e consulta do seu repositório técnico
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="ollama-mode"
-                checked={useOllama}
-                onCheckedChange={setUseOllama}
-                disabled={processing.isProcessing}
-              />
-              <Label htmlFor="ollama-mode">Offline</Label>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="ollama-mode"
+                  checked={useOllama}
+                  onCheckedChange={setUseOllama}
+                  disabled={processing.isProcessing}
+                />
+                <Label htmlFor="ollama-mode">Offline</Label>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -448,11 +453,21 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
         </CardContent>
       </Card>
 
+      {/* Model Selector - Only visible when Ollama is enabled */}
+      {useOllama && (
+        <ModelSelector 
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          showPerformance={true}
+        />
+      )}
+
       <Tabs defaultValue="consultation" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="consultation">💬 Consulta Inteligente</TabsTrigger>
           <TabsTrigger value="analysis">📊 Análise & Insights</TabsTrigger>
           <TabsTrigger value="expertise">🎯 Expertise Gerada</TabsTrigger>
+          <TabsTrigger value="performance">⚡ Performance</TabsTrigger>
         </TabsList>
 
         {/* Smart Consultation */}
@@ -673,6 +688,11 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Performance Comparison Tab */}
+        <TabsContent value="performance" className="space-y-4">
+          <PerformanceComparison />
         </TabsContent>
       </Tabs>
     </div>

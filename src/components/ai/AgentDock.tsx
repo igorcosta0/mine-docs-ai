@@ -20,6 +20,7 @@ import {
   Bot
 } from 'lucide-react';
 import { AgentChat, ChatMessage } from './AgentChat';
+import { ModelSelector } from './ModelSelector';
 import { eventBus } from '@/lib/eventBus';
 import { aiSpecialist } from '@/lib/aiSpecialist';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export function AgentDock() {
   // Settings
   const [mode, setMode] = useState<AgentMode>('passive');
   const [useOllama, setUseOllama] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('llama3');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => {
@@ -327,6 +329,16 @@ export function AgentDock() {
               onCheckedChange={setUseOllama}
             />
           </div>
+          {useOllama && (
+            <div className="pt-2 border-t">
+              <ModelSelector 
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                showPerformance={false}
+                compact={true}
+              />
+            </div>
+          )}
         </div>
       </Tabs>
     </Card>

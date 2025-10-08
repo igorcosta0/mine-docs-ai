@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,52 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AVAILABLE_MODELS, checkOllama, listAvailableModels } from "@/lib/ollama";
 
 export function AgentConfig() {
   const [provider, setProvider] = useState("ollama");
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
+  const [selectedModel, setSelectedModel] = useState("llama3");
   const [temperature, setTemperature] = useState([0.7]);
   const [maxTokens, setMaxTokens] = useState([2048]);
   const [isConnected, setIsConnected] = useState(false);
+  const [installedModels, setInstalledModels] = useState<string[]>([]);
+  const [isCheckingConnection, setIsCheckingConnection] = useState(false);
+
+  useEffect(() => {
+    checkInstalledModels();
+  }, []);
+
+  const checkInstalledModels = async () => {
+    try {
+      const models = await listAvailableModels();
+      setInstalledModels(models);
+    } catch (error) {
+      console.error('Error checking installed models:', error);
+    }
+  };
+
+  const testConnection = async () => {
+    setIsCheckingConnection(true);
+    try {
+      const connected = await checkOllama();
+      setIsConnected(connected);
+      if (connected) {
+        await checkInstalledModels();
+      }
+    } catch (error) {
+      setIsConnected(false);
+    } finally {
+      setIsCheckingConnection(false);
+    }
+  };
+
+  const isModelInstalled = (modelName: string) => {
+    return installedModels.some(installed => 
+      installed.includes(modelName) || modelName.includes(installed)
+    );
+  };
 
   return (
     <ScrollArea className="h-full">
@@ -61,22 +100,49 @@ export function AgentConfig() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="ollama-model">Modelo</Label>
-              <Input
-                id="ollama-model"
-                value="qwen2.5:14b-instruct"
-                disabled
-                className="bg-muted"
-              />
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger id="ollama-model">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_MODELS.map((model) => {
+                    const installed = isModelInstalled(model.name);
+                    return (
+                      <SelectItem 
+                        key={model.name} 
+                        value={model.name}
+                        disabled={!installed && installedModels.length > 0}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span>{model.displayName}</span>
+                          {installed && (
+                            <CheckCircle2 className="h-3 w-3 text-green-500 ml-2" />
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {AVAILABLE_MODELS.find(m => m.name === selectedModel)?.description}
+              </p>
             </div>
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => setIsConnected(!isConnected)}
+              onClick={testConnection}
+              disabled={isCheckingConnection}
             >
-              {isConnected ? (
+              {isCheckingConnection ? (
+                <>
+                  <Zap className="h-4 w-4 mr-2 animate-pulse" />
+                  Verificando...
+                </>
+              ) : isConnected ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                  Conectado
+                  Conectado ({installedModels.length} modelos)
                 </>
               ) : (
                 <>
