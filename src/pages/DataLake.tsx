@@ -2,22 +2,25 @@ import { useEffect, useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { getSupabaseUser, listLakeItems, type LakeItem } from "@/lib/datalake";
-import { Database, Upload, FileText, Sparkles, Brain, Activity } from "lucide-react";
+import { Database, Upload, FileText, Sparkles, Brain, Activity, Download } from "lucide-react";
 import UploadForm from "@/components/datalake/UploadForm";
 import ItemsTable from "@/components/datalake/ItemsTable";
 
 import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
 import { DataLakeAIAssistant } from "@/components/ai/DataLakeAIAssistant";
 import { checkOllama } from "@/lib/ollama";
+import { exportAllDataToZip, downloadBlob } from "@/lib/csvExporter";
 
 const DataLake = () => {
   const { toast } = useToast();
   const [supaUserId, setSupaUserId] = useState<string | null>(null);
   const [items, setItems] = useState<LakeItem[]>([]);
   const [ollamaOk, setOllamaOk] = useState<boolean>(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     document.title = "Data Lake — MinerDocs";
@@ -33,6 +36,38 @@ const DataLake = () => {
       toast({ title: "Aviso", description: error });
     }
     setItems(items);
+  }
+
+  async function handleExport() {
+    if (!supaUserId) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para exportar seus dados",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const zipBlob = await exportAllDataToZip();
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
+      downloadBlob(zipBlob, `minerdocs-export-${timestamp}.zip`);
+      
+      toast({
+        title: "Exportação concluída!",
+        description: "Todos os dados foram exportados em CSV"
+      });
+    } catch (error) {
+      console.error("Erro na exportação:", error);
+      toast({
+        title: "Erro na exportação",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -53,19 +88,32 @@ const DataLake = () => {
               Repositório inteligente de documentos técnicos para referência e análise na geração de novos documentos
             </p>
             
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <Badge variant={supaUserId ? "default" : "secondary"} className="px-4 py-2">
-                <Upload className="h-4 w-4 mr-2" />
-                {supaUserId ? "Upload Ativo" : "Login Necessário"}
-              </Badge>
-              <Badge variant="outline" className="px-4 py-2">
-                <FileText className="h-4 w-4 mr-2" />
-                {items.length} documentos
-              </Badge>
-              <Badge variant={ollamaOk ? "default" : "secondary"} className="px-4 py-2">
-                <Activity className="h-4 w-4 mr-2" />
-                IA: {ollamaOk ? "Disponível" : "Offline"}
-              </Badge>
+            <div className="flex flex-col items-center gap-4 mb-8">
+              <div className="flex items-center justify-center gap-4">
+                <Badge variant={supaUserId ? "default" : "secondary"} className="px-4 py-2">
+                  <Upload className="h-4 w-4 mr-2" />
+                  {supaUserId ? "Upload Ativo" : "Login Necessário"}
+                </Badge>
+                <Badge variant="outline" className="px-4 py-2">
+                  <FileText className="h-4 w-4 mr-2" />
+                  {items.length} documentos
+                </Badge>
+                <Badge variant={ollamaOk ? "default" : "secondary"} className="px-4 py-2">
+                  <Activity className="h-4 w-4 mr-2" />
+                  IA: {ollamaOk ? "Disponível" : "Offline"}
+                </Badge>
+              </div>
+              
+              <Button 
+                onClick={handleExport}
+                disabled={!supaUserId || exporting}
+                variant="outline"
+                size="lg"
+                className="gap-2"
+              >
+                <Download className="h-5 w-5" />
+                {exporting ? "Exportando..." : "Exportar Todos os Dados (CSV/ZIP)"}
+              </Button>
             </div>
           </div>
         </section>
