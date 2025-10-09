@@ -102,14 +102,27 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
   };
 
   const checkDataLakeReadiness = async () => {
-    // Simulate checking which documents need processing
-    const unprocessedDocs = documents.filter(doc => {
-      // This would check if document has been processed in knowledge table
-      return true; // Simplified for now
-    });
-    
-    setNeedsProcessing(unprocessedDocs.length > 0);
-    setReadinessScore(documents.length > 0 ? Math.max(20, 100 - (unprocessedDocs.length / documents.length) * 80) : 0);
+    if (documents.length === 0) {
+      setReadinessScore(0);
+      setNeedsProcessing(false);
+      return;
+    }
+
+    try {
+      // Verificar quais documentos já foram processados
+      const alreadyProcessed = await checkAlreadyProcessed(documents.map(d => d.id));
+      const unprocessedCount = documents.length - alreadyProcessed.size;
+      
+      setNeedsProcessing(unprocessedCount > 0);
+      
+      // Calcular score de prontidão baseado em documentos processados
+      const processedPercentage = (alreadyProcessed.size / documents.length);
+      setReadinessScore(Math.round(processedPercentage * 100));
+    } catch (error) {
+      console.error('Error checking readiness:', error);
+      setReadinessScore(20);
+      setNeedsProcessing(true);
+    }
   };
 
   const checkAlreadyProcessed = async (documentIds: string[]): Promise<Set<string>> => {
