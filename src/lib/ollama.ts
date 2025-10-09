@@ -97,7 +97,12 @@ export async function generateWithOllama(
 
     if (!res.ok) {
       const txt = await res.text();
-      const error = `Ollama erro ${res.status}: ${txt}`;
+      let error = `Ollama erro ${res.status}: ${txt}`;
+      
+      // Check if model doesn't exist
+      if (txt.includes("file does not exist") || txt.includes("model not found")) {
+        error = `Modelo "${model}" não está instalado. Execute: ollama pull ${model}`;
+      }
       
       if (trackPerformance) {
         performanceHistory.push({
