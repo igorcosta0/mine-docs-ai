@@ -28,6 +28,12 @@ export const AVAILABLE_MODELS: OllamaModel[] = [
     size: "9GB"
   },
   {
+    name: "qwen2.5:8b",
+    displayName: "Qwen 2.5 (8B)",
+    description: "Qwen 2.5 8B - Equilíbrio ideal entre desempenho e velocidade",
+    size: "5GB"
+  },
+  {
     name: "qwen2.5:7b",
     displayName: "Qwen 2.5 (7B)",
     description: "Versão menor e mais rápida do Qwen",
