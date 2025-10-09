@@ -466,6 +466,106 @@ export const DataLakeAIAssistant: React.FC<DataLakeAIAssistantProps> = ({ docume
         </CardContent>
       </Card>
 
+      {/* AI Learning Progress Card */}
+      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            Nível de Aprendizado da IA
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Progresso do processamento e análise do seu Data Lake
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Main Progress Circle/Bar */}
+          <div className="flex items-center gap-8">
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Documentos Processados</span>
+                <span className="text-2xl font-bold text-primary">{readinessScore}%</span>
+              </div>
+              <Progress value={readinessScore} className="h-4" />
+              
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <div className="text-lg font-semibold text-primary">
+                    {Math.round((readinessScore / 100) * documents.length)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Processados</div>
+                </div>
+                <div className="text-center p-2 bg-muted/50 rounded">
+                  <div className="text-lg font-semibold text-muted-foreground">
+                    {documents.length - Math.round((readinessScore / 100) * documents.length)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Pendentes</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Badge */}
+            <div className="text-center space-y-2">
+              <div className={`text-5xl font-bold ${getReadinessColor()}`}>
+                {readinessScore}%
+              </div>
+              <Badge 
+                variant={readinessScore >= 80 ? "default" : readinessScore >= 50 ? "secondary" : "outline"}
+                className="text-xs"
+              >
+                {readinessScore >= 80 && "🎓 Avançado"}
+                {readinessScore >= 50 && readinessScore < 80 && "📚 Intermediário"}
+                {readinessScore < 50 && "🌱 Iniciante"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Knowledge Stats */}
+          <div className="grid grid-cols-3 gap-3 pt-4 border-t">
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground">Conhecimentos</div>
+              <div className="text-2xl font-bold text-primary">
+                {dataLakeStats?.knowledge_items || 0}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground">Áreas de Expertise</div>
+              <div className="text-2xl font-bold text-primary">
+                {expertise.length}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm font-medium text-muted-foreground">Confiança Média</div>
+              <div className="text-2xl font-bold text-primary">
+                {expertise.length > 0 
+                  ? Math.round(expertise.reduce((sum, e) => sum + (e.confidence_level || 0), 0) / expertise.length)
+                  : 0}%
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action based on status */}
+          {readinessScore < 100 && (
+            <Alert className="bg-primary/5 border-primary/20">
+              <Lightbulb className="h-4 w-4" />
+              <AlertDescription>
+                {readinessScore === 0 && "Comece processando seus documentos para que a IA possa aprender com eles."}
+                {readinessScore > 0 && readinessScore < 50 && "Continue processando mais documentos para melhorar a capacidade de análise da IA."}
+                {readinessScore >= 50 && readinessScore < 100 && "Você está progredindo bem! Processe os documentos restantes para maximizar a inteligência da IA."}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {readinessScore === 100 && (
+            <Alert className="bg-green-500/10 border-green-500/20">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700">
+                🎉 Parabéns! Todos os documentos foram processados. Sua IA está totalmente treinada!
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Model Selector - Only visible when Ollama is enabled */}
       {useOllama && (
         <ModelSelector 
