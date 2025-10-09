@@ -22,3 +22,6 @@ enable_confirmations = false
 
 [functions.ai-data-lake-specialist]
 verify_jwt = true
+
+[functions.smart-document-generation]
+verify_jwt = true

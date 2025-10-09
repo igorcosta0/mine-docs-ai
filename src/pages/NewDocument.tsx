@@ -12,14 +12,17 @@ import { generateWithOllama } from "@/lib/ollama";
 import { BaseFields, DocumentRecord, DocumentType } from "@/types";
 import { upsertDocument } from "@/lib/storage";
 import { getCurrentUser } from "@/lib/auth";
-import { FileText, Loader2, Sparkles, Bot } from "lucide-react";
+import { FileText, Loader2, Sparkles, Bot, Lightbulb } from "lucide-react";
 import OllamaAssistant from "@/components/ollama/OllamaAssistant";
 import { DocumentAIAssistant } from "@/components/ai/DocumentAIAssistant";
+import { useSmartFormData } from "@/hooks/useSmartFormData";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const NewDocument = () => {
   const { type } = useParams();
   const nav = useNavigate();
-  const [model, setModel] = useState("llama3");
+  const [model, setModel] = useState("qwen2.5:7b");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<BaseFields & Record<string, string>>>({});
@@ -29,10 +32,25 @@ const NewDocument = () => {
   const formRefs = useRef<{ [key: string]: HTMLInputElement | HTMLTextAreaElement | null }>({});
 
   const def = useMemo(() => DOC_TYPES[(type as DocumentType) ?? "especificacao"], [type]);
+  const { suggestions, loading: smartLoading } = useSmartFormData(type as DocumentType);
 
   useEffect(() => {
     document.title = `Novo — ${def?.label ?? "Documento"} — MinerDocs`;
   }, [def]);
+
+  // Auto-preencher com dados inteligentes
+  useEffect(() => {
+    if (!smartLoading && suggestions) {
+      if (suggestions.autor && formRefs.current['autor']) {
+        formRefs.current['autor'].value = suggestions.autor;
+        handleFormChange('autor', suggestions.autor);
+      }
+      if (suggestions.normas && formRefs.current['normas']) {
+        formRefs.current['normas'].value = suggestions.normas;
+        handleFormChange('normas', suggestions.normas);
+      }
+    }
+  }, [smartLoading, suggestions]);
 
   if (!def) return <div>Tipo inválido</div>;
 
@@ -67,10 +85,31 @@ const NewDocument = () => {
     const technical: Record<string, string> = {};
     def.technical.forEach((f) => (technical[f.label] = String(form.get(f.name) || "")));
 
-    const prompt = buildPrompt(type as DocumentType, base, technical);
-
     try {
-      const response = await generateWithOllama(model, prompt);
+      // Tentar edge function inteligente primeiro
+      const { data: smartData, error: smartError } = await supabase.functions.invoke('smart-document-generation', {
+        body: {
+          documentType: type as DocumentType,
+          formData: { ...base, ...technical },
+          useKnowledge: true
+        }
+      });
+
+      let response: string;
+      let usedSmartGeneration = false;
+
+      if (!smartError && smartData?.content) {
+        response = smartData.content;
+        usedSmartGeneration = true;
+        if (smartData.usedKnowledge) {
+          toast.success("Documento gerado usando seu conhecimento do Data Lake!");
+        }
+      } else {
+        // Fallback para geração local com Ollama
+        const prompt = buildPrompt(type as DocumentType, base, technical);
+        response = await generateWithOllama(model, prompt);
+      }
+
       const user = await getCurrentUser();
       const now = new Date().toISOString();
       const doc: DocumentRecord = {
@@ -83,9 +122,12 @@ const NewDocument = () => {
         updatedAt: now,
       };
       upsertDocument(doc);
+      
+      toast.success(usedSmartGeneration ? "Documento gerado com IA inteligente!" : "Documento gerado com sucesso!");
       nav(`/doc/${doc.id}`);
     } catch (err: any) {
       setError(err.message || String(err));
+      toast.error(err.message || "Erro ao gerar documento");
     } finally {
       setLoading(false);
     }
@@ -133,6 +175,26 @@ const NewDocument = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {/* Sugestões Inteligentes */}
+                  {suggestions.similarDocuments.length > 0 && (
+                    <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="h-5 w-5 text-primary" />
+                        <span className="font-semibold text-sm">Documentos similares encontrados</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestions.similarDocuments.map((doc) => (
+                          <Badge key={doc.id} variant="secondary" className="text-xs">
+                            {doc.titulo}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        A IA usará esses documentos como referência para gerar conteúdo mais preciso
+                      </p>
+                    </div>
+                  )}
+
                   <form onSubmit={onSubmit} className="space-y-6">
                     <fieldset className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -146,7 +208,9 @@ const NewDocument = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Autor</Label>
+                        <Label>
+                          Autor {smartLoading && <span className="text-xs text-muted-foreground">(auto-preenchendo...)</span>}
+                        </Label>
                         <Input 
                           name="autor" 
                           required 
@@ -175,6 +239,11 @@ const NewDocument = () => {
                           ref={(el) => (formRefs.current['normas'] = el)}
                           onChange={(e) => handleFormChange('normas', e.target.value)}
                         />
+                        {suggestions.recentManufacturers.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Fabricantes recentes: {suggestions.recentManufacturers.join(", ")}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2 md:col-span-2">
                         <Label>Descrição do projeto</Label>

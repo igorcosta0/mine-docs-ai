@@ -469,6 +469,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          default_norms: string[] | null
+          department: string | null
+          favorite_manufacturers: string[] | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          default_norms?: string[] | null
+          department?: string | null
+          favorite_manufacturers?: string[] | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          default_norms?: string[] | null
+          department?: string | null
+          favorite_manufacturers?: string[] | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
