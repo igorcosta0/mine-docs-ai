@@ -22,7 +22,7 @@ import { toast } from "sonner";
 const NewDocument = () => {
   const { type } = useParams();
   const nav = useNavigate();
-  const [model, setModel] = useState("qwen2.5:7b");
+  const [model, setModel] = useState("qwen3:8b");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<BaseFields & Record<string, string>>>({});

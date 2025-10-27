@@ -103,7 +103,7 @@ Gere o documento completo agora:`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "qwen2.5:7b",
+          model: "qwen3:8b",
           prompt: prompt,
           stream: false,
         }),
