@@ -14,6 +14,7 @@ import { AISpecialistPanel } from "@/components/ai/AISpecialistPanel";
 import { DataLakeAIAssistant } from "@/components/ai/DataLakeAIAssistant";
 import { checkOllama } from "@/lib/ollama";
 import { exportAllDataToZip, downloadBlob } from "@/lib/csvExporter";
+import { downloadKnowledgeJSON, downloadKnowledgeZIP } from "@/lib/knowledgeExporter";
 
 const DataLake = () => {
   const { toast } = useToast();
@@ -70,6 +71,58 @@ const DataLake = () => {
     }
   }
 
+  async function handleExportKnowledgeJSON() {
+    if (!supaUserId) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para exportar conhecimento",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await downloadKnowledgeJSON();
+      toast({
+        title: "Conhecimento exportado!",
+        description: "Arquivo JSON com todo conhecimento da IA foi baixado."
+      });
+    } catch (error) {
+      console.error("Erro ao exportar conhecimento:", error);
+      toast({
+        title: "Erro na exportação",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    }
+  }
+
+  async function handleExportKnowledgeZIP() {
+    if (!supaUserId) {
+      toast({
+        title: "Login necessário",
+        description: "Faça login para exportar conhecimento",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await downloadKnowledgeZIP();
+      toast({
+        title: "Conhecimento exportado!",
+        description: "ZIP completo com todo conhecimento da IA foi baixado."
+      });
+    } catch (error) {
+      console.error("Erro ao exportar conhecimento:", error);
+      toast({
+        title: "Erro na exportação",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    }
+  }
+
   return (
     <AppLayout>
       <div className="p-8 space-y-8">
@@ -104,16 +157,40 @@ const DataLake = () => {
                 </Badge>
               </div>
               
-              <Button 
-                onClick={handleExport}
-                disabled={!supaUserId || exporting}
-                variant="outline"
-                size="lg"
-                className="gap-2"
-              >
-                <Download className="h-5 w-5" />
-                {exporting ? "Exportando..." : "Exportar Todos os Dados (CSV/ZIP)"}
-              </Button>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button 
+                  onClick={handleExport}
+                  disabled={!supaUserId || exporting}
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                >
+                  <Download className="h-5 w-5" />
+                  {exporting ? "Exportando..." : "Exportar Dados (CSV)"}
+                </Button>
+                
+                <Button 
+                  onClick={handleExportKnowledgeJSON}
+                  disabled={!supaUserId || items.length === 0}
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                >
+                  <Brain className="h-5 w-5" />
+                  Exportar Conhecimento (JSON)
+                </Button>
+                
+                <Button 
+                  onClick={handleExportKnowledgeZIP}
+                  disabled={!supaUserId || items.length === 0}
+                  variant="default"
+                  size="lg"
+                  className="gap-2"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  Exportar Conhecimento (ZIP)
+                </Button>
+              </div>
             </div>
           </div>
         </section>
